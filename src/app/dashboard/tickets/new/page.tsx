@@ -155,7 +155,7 @@ export default function NewTicketPage() {
 
             {/* Título */}
             <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium" style={{ color: "var(--color-text)" }}>
+              <label className="text-base font-medium" style={{ color: "var(--color-text)" }}>
                 Título <span style={{ color: "var(--color-error)" }}>*</span>
               </label>
               <input
@@ -170,7 +170,7 @@ export default function NewTicketPage() {
 
             {/* Descripción */}
             <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium" style={{ color: "var(--color-text)" }}>
+              <label className="text-base font-medium" style={{ color: "var(--color-text)" }}>
                 Descripción <span style={{ color: "var(--color-error)" }}>*</span>
               </label>
               <textarea
@@ -194,7 +194,7 @@ export default function NewTicketPage() {
             {/* Categoría + Prioridad */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium" style={{ color: "var(--color-text)" }}>
+                <label className="text-base font-medium" style={{ color: "var(--color-text)" }}>
                   Categoría <span style={{ color: "var(--color-error)" }}>*</span>
                 </label>
                 <select
@@ -212,7 +212,7 @@ export default function NewTicketPage() {
               </div>
 
               <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium" style={{ color: "var(--color-text)" }}>
+                <label className="text-base font-medium" style={{ color: "var(--color-text)" }}>
                   Prioridad <span style={{ color: "var(--color-error)" }}>*</span>
                 </label>
                 <select
@@ -237,7 +237,7 @@ export default function NewTicketPage() {
 
             {/* Archivo adjunto */}
             <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium" style={{ color: "var(--color-text)" }}>
+              <label className="text-base font-medium" style={{ color: "var(--color-text)" }}>
                 Archivo adjunto
               </label>
               {file ? (
@@ -308,6 +308,7 @@ export default function NewTicketPage() {
                   backgroundColor: "var(--color-primary)",
                   color: "#fff",
                   fontSize: "0.9375rem",
+                  fontWeight: 700,
                   padding: "0.55rem 1.5rem",
                   border: "none",
                   cursor: loading ? "not-allowed" : "pointer",

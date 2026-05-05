@@ -5,23 +5,17 @@ export async function POST(req: Request) {
   try {
     const { email } = await req.json()
 
-    const user = await prisma.users.findUnique({
-      where: { email },
-    })
+    const user = await prisma.users.findUnique({ where: { email } })
 
     if (!user) {
-      return NextResponse.json(
-        { error: "Usuario no encontrado" },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 })
     }
 
     const tickets = await prisma.tickets.findMany({
-      where: {
-        created_by: user.id,
-      },
-      orderBy: {
-        created_at: "desc",
+      where: { created_by: user.id },
+      orderBy: { created_at: "desc" },
+      include: {
+        categories: { select: { name: true } },
       },
     })
 
@@ -29,10 +23,6 @@ export async function POST(req: Request) {
 
   } catch (error) {
     console.error("ERROR MY TICKETS:", error)
-
-    return NextResponse.json(
-      { error: "Error obteniendo tickets" },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: "Error obteniendo tickets" }, { status: 500 })
   }
 }

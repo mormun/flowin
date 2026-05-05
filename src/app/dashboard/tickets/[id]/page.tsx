@@ -55,7 +55,7 @@ const sectionLabelStyle: React.CSSProperties = {
   fontWeight: 700,
   textTransform: "uppercase",
   letterSpacing: "0.1em",
-  color: "var(--color-text-faint)",
+  color: "var(--color-text)",
   marginBottom: "0.625rem",
   paddingLeft: "0.25rem",
 }
@@ -65,7 +65,7 @@ const metaLabelStyle: React.CSSProperties = {
   fontWeight: 600,
   textTransform: "uppercase",
   letterSpacing: "0.08em",
-  color: "var(--color-text-faint)",
+  color: "var(--color-text)",
 }
 
 const DateTimeValue = ({ iso }: { iso?: string | null }) => {

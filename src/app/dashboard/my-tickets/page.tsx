@@ -10,7 +10,8 @@ type Ticket = {
   id: number
   title: string
   priority: string
-  category_id: number
+  category_id: number | null
+  categories: { name: string } | null   // ← añadido
   status_id: number
   created_at: string
 }
@@ -39,13 +40,7 @@ const STATUS_STYLES: Record<number, { bg: string; color: string }> = {
 const Badge = ({ label, bg, color }: { label: string; bg: string; color: string }) => (
   <span
     className="inline-flex items-center rounded-full text-sm font-medium"
-    style={{
-      backgroundColor: bg,
-      color,
-      padding: "0.10rem 0.75rem",
-      whiteSpace: "nowrap",
-      lineHeight: 1.4,
-    }}
+    style={{ backgroundColor: bg, color, padding: "0.10rem 0.75rem", whiteSpace: "nowrap", lineHeight: 1.4 }}
   >
     {label}
   </span>
@@ -131,37 +126,20 @@ export default function MyTicketsPage() {
   )
 
   return (
-    <div
-      style={{
-        width: "100%",
-        padding: "2rem 3rem 2rem 2.5rem",
-        marginTop: "1.5rem",
-      }}
-    >
+    <div style={{ width: "100%", padding: "2rem 3rem 2rem 2.5rem", marginTop: "1.5rem" }}>
+
       {/* Título */}
       <div style={{ marginBottom: "1.25rem" }}>
-        <h2 className="text-2xl font-bold" style={{ color: "var(--color-text)" }}>
-          Mis tickets
-        </h2>
-        <p className="mt-1 text-sm" style={{ color: "var(--color-text-muted)" }}>
-          Historial de tickets creados por ti
-        </p>
+        <h2 className="text-2xl font-bold" style={{ color: "var(--color-text)" }}>Mis tickets</h2>
+        <p className="mt-1 text-sm" style={{ color: "var(--color-text-muted)" }}>Historial de tickets creados por ti</p>
       </div>
 
       {/* Filtros + botón */}
-      <div
-        className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
-        style={{ marginBottom: "1.25rem" }}
-      >
+      <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between" style={{ marginBottom: "1.25rem" }}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          {/* Buscador */}
           <div
             className="flex items-center gap-2 rounded-lg px-3 py-2.5"
-            style={{
-              backgroundColor: "var(--color-surface)",
-              border: "1px solid var(--color-border)",
-              width: "260px",
-            }}
+            style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", width: "260px" }}
           >
             <Search size={14} color="var(--color-text-faint)" />
             <input
@@ -173,8 +151,6 @@ export default function MyTicketsPage() {
               onChange={(e) => { setSearch(e.target.value); setCurrentPage(1) }}
             />
           </div>
-
-          {/* Select estado */}
           <select
             className="rounded-lg outline-none"
             style={{
@@ -193,24 +169,12 @@ export default function MyTicketsPage() {
             <option value="closed">Cerrados / Cancelados</option>
           </select>
         </div>
-
-        {/* BtnPrimary como Link */}
         <Link
           href="/dashboard/tickets/new"
           className="flex items-center gap-2 rounded-full font-medium transition whitespace-nowrap"
-          style={{
-            backgroundColor: "var(--color-primary)",
-            color: "#fff",
-            fontSize: "0.9375rem",
-            padding: "0.55rem 1.5rem",
-            textDecoration: "none",
-          }}
-          onMouseEnter={(e) =>
-            ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-primary-hover)")
-          }
-          onMouseLeave={(e) =>
-            ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-primary)")
-          }
+          style={{ backgroundColor: "var(--color-primary)", color: "#fff", fontSize: "0.9375rem", padding: "0.55rem 1.5rem", textDecoration: "none" }}
+          onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-primary-hover)")}
+          onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-primary)")}
         >
           <Plus size={15} /> Nuevo ticket
         </Link>
@@ -219,46 +183,25 @@ export default function MyTicketsPage() {
       {/* Tabla */}
       <div
         className="w-full overflow-x-auto rounded-xl"
-        style={{
-          backgroundColor: "var(--color-surface)",
-          border: "1px solid var(--color-border)",
-          boxShadow: "var(--shadow-sm)",
-        }}
+        style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", boxShadow: "var(--shadow-sm)" }}
       >
         {loading ? (
           <div className="space-y-3 p-6">
             {[1, 2, 3, 4].map((i) => (
-              <div
-                key={i}
-                className="h-10 rounded-lg animate-pulse"
-                style={{ backgroundColor: "var(--color-surface-offset)" }}
-              />
+              <div key={i} className="h-10 rounded-lg animate-pulse" style={{ backgroundColor: "var(--color-surface-offset)" }} />
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <div
-            className="flex flex-col items-center justify-center py-16"
-            style={{ color: "var(--color-text-faint)" }}
-          >
-            <svg
-              width="40" height="40" viewBox="0 0 24 24"
-              fill="none" stroke="currentColor" strokeWidth="1.5" className="mb-3"
-            >
+          <div className="flex flex-col items-center justify-center py-16" style={{ color: "var(--color-text-faint)" }}>
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mb-3">
               <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
               <polyline points="14 2 14 8 20 8" />
             </svg>
-            <p className="text-base font-medium mb-3" style={{ color: "var(--color-text-muted)" }}>
-              Aún no tienes tickets
-            </p>
+            <p className="text-base font-medium mb-3" style={{ color: "var(--color-text-muted)" }}>Aún no tienes tickets</p>
             <Link
               href="/dashboard/tickets/new"
               className="flex items-center gap-1.5 rounded-full text-sm font-medium transition"
-              style={{
-                backgroundColor: "var(--color-primary-light)",
-                color: "var(--color-primary-dark)",
-                textDecoration: "none",
-                padding: "0.4rem 1rem",
-              }}
+              style={{ backgroundColor: "var(--color-primary-light)", color: "var(--color-primary-dark)", textDecoration: "none", padding: "0.4rem 1rem" }}
             >
               <Plus size={14} /> Crear primer ticket
             </Link>
@@ -267,7 +210,8 @@ export default function MyTicketsPage() {
           <table className="w-full">
             <thead>
               <tr style={{ borderBottom: "1px solid var(--color-border)" }}>
-                <SortTh label="#"         value="id"       current={sortBy} firstCol onClick={() => { setSortBy("id");       setCurrentPage(1) }} />
+                {/* ← Título cambiado a "ID TICKET" */}
+                <SortTh label="ID Ticket" value="id"       current={sortBy} firstCol onClick={() => { setSortBy("id");       setCurrentPage(1) }} />
                 <SortTh label="Título"    value="title"    current={sortBy}          onClick={() => { setSortBy("title");    setCurrentPage(1) }} />
                 <th
                   className="pr-4 text-left text-sm font-semibold uppercase tracking-wider"
@@ -282,7 +226,7 @@ export default function MyTicketsPage() {
                 >
                   Estado
                 </th>
-                <SortTh label="Fecha"     value="date"     current={sortBy}          onClick={() => { setSortBy("date");     setCurrentPage(1) }} />
+                <SortTh label="Fecha" value="date" current={sortBy}                  onClick={() => { setSortBy("date");     setCurrentPage(1) }} />
               </tr>
             </thead>
             <tbody>
@@ -290,42 +234,41 @@ export default function MyTicketsPage() {
                 <tr
                   key={t.id}
                   className="cursor-pointer transition-colors"
-                  style={{
-                    borderBottom: idx < paginated.length - 1 ? "1px solid var(--color-divider)" : "none",
-                  }}
+                  style={{ borderBottom: idx < paginated.length - 1 ? "1px solid var(--color-divider)" : "none" }}
                   onClick={() => router.push(`/dashboard/tickets/${t.id}`)}
                   onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-surface-offset)")}
                   onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "transparent")}
                 >
                   <td
-                    className="py-3.5 text-base tabular-nums font-medium"
-                    style={{ color: "var(--color-text-faint)", paddingLeft: "2rem", paddingRight: "1rem" }}
+                    className="text-base tabular-nums font-medium"
+                    style={{ paddingTop: "0.5rem", paddingBottom: "0.5rem", color: "var(--color-text-faint)", paddingLeft: "2rem", paddingRight: "1rem" }}
                   >
                     #{t.id}
                   </td>
-                  <td className="py-3.5 pr-4" style={{ maxWidth: "220px" }}>
+                  <td style={{ paddingTop: "0.5rem", paddingBottom: "0.5rem", paddingRight: "1rem", maxWidth: "220px" }}>
                     <span className="block truncate text-base font-medium" style={{ color: "var(--color-text)" }}>
                       {t.title}
                     </span>
                   </td>
-                  <td className="py-3.5 pr-4 text-base" style={{ color: "var(--color-text-muted)" }}>
-                    {t.category_id}
+                  {/* ← Ahora muestra el nombre de la categoría */}
+                  <td className="text-base" style={{ paddingTop: "0.5rem", paddingBottom: "0.5rem", paddingRight: "1rem", color: "var(--color-text-muted)" }}>
+                    {t.categories?.name ?? "—"}
                   </td>
-                  <td className="py-3.5 pr-4">
+                  <td style={{ paddingTop: "0.5rem", paddingBottom: "0.5rem", paddingRight: "1rem" }}>
                     <Badge
                       label={t.priority}
                       bg={PRIORITY_STYLES[t.priority]?.bg ?? "var(--color-bg)"}
                       color={PRIORITY_STYLES[t.priority]?.color ?? "var(--color-text-muted)"}
                     />
                   </td>
-                  <td className="py-3.5 pr-4">
+                  <td style={{ paddingTop: "0.5rem", paddingBottom: "0.5rem", paddingRight: "1rem" }}>
                     <Badge
                       label={STATUS_LABELS[t.status_id] ?? "—"}
                       bg={STATUS_STYLES[t.status_id]?.bg ?? "var(--color-bg)"}
                       color={STATUS_STYLES[t.status_id]?.color ?? "var(--color-text-muted)"}
                     />
                   </td>
-                  <td className="py-3.5 pr-4 text-base tabular-nums" style={{ color: "var(--color-text-muted)" }}>
+                  <td className="text-base tabular-nums" style={{ paddingTop: "0.5rem", paddingBottom: "0.5rem", paddingRight: "1rem", color: "var(--color-text-muted)" }}>
                     {new Date(t.created_at).toLocaleDateString("es-ES")}
                   </td>
                 </tr>
@@ -346,11 +289,7 @@ export default function MyTicketsPage() {
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               disabled={currentPage === 1}
               className="rounded-lg px-3 py-1.5 text-sm font-medium transition disabled:opacity-40"
-              style={{
-                backgroundColor: "var(--color-surface)",
-                border: "1px solid var(--color-border)",
-                color: "var(--color-text-muted)",
-              }}
+              style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", color: "var(--color-text-muted)" }}
             >
               ←
             </button>
@@ -383,11 +322,7 @@ export default function MyTicketsPage() {
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
               className="rounded-lg px-3 py-1.5 text-sm font-medium transition disabled:opacity-40"
-              style={{
-                backgroundColor: "var(--color-surface)",
-                border: "1px solid var(--color-border)",
-                color: "var(--color-text-muted)",
-              }}
+              style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", color: "var(--color-text-muted)" }}
             >
               →
             </button>

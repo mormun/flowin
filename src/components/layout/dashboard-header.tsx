@@ -4,6 +4,24 @@ import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
 import { useEffect, useState } from "react"
 
+// ── Mapa de segmentos URL → nombre en español ─────────────────
+const ROUTE_NAMES: Record<string, string> = {
+  "dashboard":  "Inicio",
+  "tickets":    "Tickets",
+  "my-tickets":         "Mis tickets",
+  "bandeja":    "Bandeja",
+  "profile":    "Perfil",
+  "users":      "Usuarios",
+  "categories": "Categorías",
+  "status":     "Estados",
+  "new":        "Nuevo ticket",
+}
+
+// ── Excepciones: ruta padre personalizada por ruta completa ───
+const PARENT_OVERRIDE: Record<string, string> = {
+  "/dashboard/tickets/new": "/dashboard/my-tickets",
+}
+
 export function DashboardHeader({ onMenuToggle }: { onMenuToggle?: () => void }) {
   const router = useRouter()
   const pathname = usePathname()
@@ -26,6 +44,19 @@ export function DashboardHeader({ onMenuToggle }: { onMenuToggle?: () => void })
   }
 
   const segments = pathname.split("/").filter(Boolean)
+
+  const buildHref = (index: number) => {
+    const accumulated = "/" + segments.slice(0, index + 1).join("/")
+    const fullPath = "/" + segments.join("/")
+    if (PARENT_OVERRIDE[fullPath] && index === segments.length - 2) {
+      return PARENT_OVERRIDE[fullPath]
+    }
+    return accumulated
+  }
+
+  const translateSegment = (segment: string) =>
+    ROUTE_NAMES[segment.toLowerCase()] ??
+    segment.replace(/-/g, " ").replace(/^\w/, (c) => c.toUpperCase())
 
   return (
     <header
@@ -65,18 +96,33 @@ export function DashboardHeader({ onMenuToggle }: { onMenuToggle?: () => void })
         <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "1.125rem" }}>
           {segments.map((segment, index) => {
             const isLast = index === segments.length - 1
+            const href = buildHref(index)
+            const label = translateSegment(segment)
+
             return (
               <span key={index} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                 {index > 0 && (
                   <span style={{ color: "var(--color-text-faint)" }}>/</span>
                 )}
-                <span style={{
-                  color: isLast ? "var(--color-text)" : "var(--color-text-muted)",
-                  fontWeight: isLast ? 500 : 400,
-                  textTransform: "capitalize",
-                }}>
-                  {segment.replace(/-/g, " ")}
-                </span>
+                {isLast ? (
+                  <span style={{ color: "var(--color-text)", fontWeight: 500 }}>
+                    {label}
+                  </span>
+                ) : (
+                  <Link
+                    href={href}
+                    style={{
+                      color: "var(--color-text-muted)",
+                      fontWeight: 400,
+                      textDecoration: "none",
+                      transition: "color 120ms",
+                    }}
+                    onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--color-text)")}
+                    onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--color-text-muted)")}
+                  >
+                    {label}
+                  </Link>
+                )}
               </span>
             )
           })}
@@ -147,16 +193,7 @@ export function DashboardHeader({ onMenuToggle }: { onMenuToggle?: () => void })
             ;(e.currentTarget as HTMLElement).style.color = "var(--color-text-muted)"
           }}
         >
-          <svg
-            width="17"
-            height="17"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
             <polyline points="16 17 21 12 16 7" />
             <line x1="21" y1="12" x2="9" y2="12" />

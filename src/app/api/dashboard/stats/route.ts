@@ -16,27 +16,57 @@ export async function GET(req: Request) {
       const user = await prisma.users.findUnique({ where: { email } })
       if (!user) return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 })
 
-      const [abiertos, enProceso, solucionados, cerrados] = await Promise.all([
+      const now = new Date()
+      const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+
+      const [abiertos, abiertosMes, solucionados, cerrados, categorias] = await Promise.all([
+        // Tickets abiertos en total
         prisma.tickets.count({
-          where: { created_by: user.id, status: { name: { in: ["Nuevo", "Pendiente"] } } },
+          where: { created_by: user.id, status: { name: { in: ["Nuevo", "Pendiente", "Proceso"] } } },
         }),
+        // Tickets abiertos en el último mes
         prisma.tickets.count({
-          where: { created_by: user.id, status: { name: "Proceso" } },
+          where: {
+            created_by: user.id,
+            status: { name: { in: ["Nuevo", "Pendiente", "Proceso"] } },
+            created_at: { gte: firstOfMonth },
+          },
         }),
+        // Tickets solucionados
         prisma.tickets.count({
           where: { created_by: user.id, status: { name: "Solucionado" } },
         }),
+        // Tickets cerrados
         prisma.tickets.count({
           where: { created_by: user.id, status: { name: "Cerrado" } },
         }),
+        // Categoría más utilizada
+        prisma.tickets.groupBy({
+          by: ["category_id"],
+          where: { created_by: user.id, category_id: { not: null } },
+          _count: { category_id: true },
+          orderBy: { _count: { category_id: "desc" } },
+          take: 1,
+        }),
       ])
+
+      // Resolver nombre de la categoría más usada
+      let topCategoria = "—"
+      if (categorias.length > 0 && categorias[0].category_id) {
+        const cat = await prisma.categories.findUnique({
+          where: { id: categorias[0].category_id },
+          select: { name: true },
+        })
+        if (cat) topCategoria = cat.name
+      }
 
       return NextResponse.json({
         cards: [
-          { title: "Tickets abiertos",     value: abiertos },
-          { title: "Tickets en proceso",   value: enProceso },
-          { title: "Tickets solucionados", value: solucionados },
-          { title: "Tickets cerrados",     value: cerrados },
+          { title: "Tickets abiertos",        value: abiertos,     type: "number" },
+          { title: "Abiertos este mes",        value: abiertosMes,  type: "number" },
+          { title: "Tickets solucionados",     value: solucionados, type: "number" },
+          { title: "Tickets cerrados",         value: cerrados,     type: "number" },
+          { title: "Categoría más utilizada",  value: topCategoria, type: "text"   },
         ],
       })
     }
@@ -63,9 +93,9 @@ export async function GET(req: Request) {
 
       return NextResponse.json({
         cards: [
-          { title: "Sin asignar",       value: sinAsignar },
-          { title: "Mis tickets",       value: misTickets },
-          { title: "Cerrados este mes", value: cerradosMes },
+          { title: "Sin asignar",       value: sinAsignar,   type: "number" },
+          { title: "Mis tickets",       value: misTickets,   type: "number" },
+          { title: "Cerrados este mes", value: cerradosMes,  type: "number" },
         ],
       })
     }
@@ -80,9 +110,9 @@ export async function GET(req: Request) {
 
       return NextResponse.json({
         cards: [
-          { title: "Usuarios activos",   value: usuariosActivos },
-          { title: "Categorías activas", value: categoriasActivas },
-          { title: "Tickets totales",    value: ticketsTotales },
+          { title: "Usuarios activos",   value: usuariosActivos,   type: "number" },
+          { title: "Categorías activas", value: categoriasActivas, type: "number" },
+          { title: "Tickets totales",    value: ticketsTotales,    type: "number" },
         ],
       })
     }
