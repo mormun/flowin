@@ -26,6 +26,7 @@ export async function GET(
         updated_at: true,
         closed_at: true,
         assigned_to: true,
+        attachments: true,
       },
     })
 

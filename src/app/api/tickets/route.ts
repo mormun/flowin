@@ -95,7 +95,7 @@ export async function POST(req: Request) {
       },
     })
 
-    return NextResponse.json({ success: true, ticket })
+    return NextResponse.json(ticket, { status: 201 })
 
   } catch (error) {
     console.error("ERROR CREATE TICKET:", error)

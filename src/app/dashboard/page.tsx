@@ -153,7 +153,7 @@ function ShortcutCard({ label, icon, href, description }: { label: string; icon:
         {icon}
       </div>
       <div>
-        <p className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>{label}</p>
+        <p className="text-base font-semibold" style={{ color: "var(--color-text)" }}>{label}</p>
         <p className="text-xs mt-0.5" style={{ color: "var(--color-text-faint)" }}>{description}</p>
       </div>
     </button>

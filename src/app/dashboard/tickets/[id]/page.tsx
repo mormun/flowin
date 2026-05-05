@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { RefreshCcw, AlertTriangle, UserPlus, ThumbsUp, ArrowLeft, Send } from "lucide-react"
+import { RefreshCcw, AlertTriangle, UserPlus, ThumbsUp, ArrowLeft, Send, Paperclip } from "lucide-react"
 import { Tooltip } from "@/components/ui/tooltip"
 import { getUserRole, getUserId, getUserEmail } from "@/lib/auth-client"
 
@@ -19,6 +19,7 @@ type Ticket = {
   closed_at?: string | null
   assigned_to?: number | null
   assigned_user?: { id: number; name: string; surname: string } | null
+  attachments?: { id: number; filename: string | null; file_path: string | null }[]
 }
 
 type Comment = {
@@ -31,9 +32,9 @@ type Comment = {
 
 const PRIORITY_STYLES: Record<string, { bg: string; color: string }> = {
   "Crítica": { bg: "var(--color-error-light)", color: "var(--color-error)" },
-  "Alta":    { bg: "var(--color-warning-light)", color: "var(--color-warning)" },
-  "Media":   { bg: "#fef9c3", color: "#854d0e" },
-  "Baja":    { bg: "var(--color-success-light)", color: "var(--color-success)" },
+  "Alta": { bg: "var(--color-warning-light)", color: "var(--color-warning)" },
+  "Media": { bg: "#fef9c3", color: "#854d0e" },
+  "Baja": { bg: "var(--color-success-light)", color: "var(--color-success)" },
 }
 
 const STATUS_LABELS: Record<number, string> = {
@@ -194,11 +195,11 @@ const ModalFooter = ({ onClose, onConfirm, confirmLabel = "Guardar" }: { onClose
 )
 
 const BUBBLE = {
-  self:   { align: "flex-end"   as const, bg: "#01696f", color: "#ffffff", nameColor: "rgba(255,255,255,0.7)", br: "1rem 1rem 0.25rem 1rem" },
-  tech:   { align: "flex-start" as const, bg: "#cedcd8", color: "#1c2b2b", nameColor: "#01696f",               br: "1rem 1rem 1rem 0.25rem" },
-  admin:  { align: "flex-start" as const, bg: "#e7d7c4", color: "#2b1f10", nameColor: "#da7101",               br: "1rem 1rem 1rem 0.25rem" },
-  user:   { align: "flex-start" as const, bg: "#ebebeb", color: "#28251d", nameColor: "#7a7974",               br: "1rem 1rem 1rem 0.25rem" },
-  system: { align: "center"     as const, bg: "#e6e4df", color: "#7a7974", nameColor: "#bab9b4",               br: "9999px" },
+  self: { align: "flex-end" as const, bg: "#01696f", color: "#ffffff", nameColor: "rgba(255,255,255,0.7)", br: "1rem 1rem 0.25rem 1rem" },
+  tech: { align: "flex-start" as const, bg: "#cedcd8", color: "#1c2b2b", nameColor: "#01696f", br: "1rem 1rem 1rem 0.25rem" },
+  admin: { align: "flex-start" as const, bg: "#e7d7c4", color: "#2b1f10", nameColor: "#da7101", br: "1rem 1rem 1rem 0.25rem" },
+  user: { align: "flex-start" as const, bg: "#ebebeb", color: "#28251d", nameColor: "#7a7974", br: "1rem 1rem 1rem 0.25rem" },
+  system: { align: "center" as const, bg: "#e6e4df", color: "#7a7974", nameColor: "#bab9b4", br: "9999px" },
 }
 
 function ChatBubble({ comment, isSelf }: { comment: Comment; isSelf: boolean }) {
@@ -206,10 +207,10 @@ function ChatBubble({ comment, isSelf }: { comment: Comment; isSelf: boolean }) 
   const bubbleRole = comment.is_system
     ? "system"
     : isSelf
-    ? "self"
-    : (rawRole as keyof typeof BUBBLE) in BUBBLE
-    ? (rawRole as keyof typeof BUBBLE)
-    : "user"
+      ? "self"
+      : (rawRole as keyof typeof BUBBLE) in BUBBLE
+        ? (rawRole as keyof typeof BUBBLE)
+        : "user"
 
   const s = BUBBLE[bubbleRole]
   const authorLabel = comment.is_system ? "Sistema" : comment.user ? `${comment.user.name} ${comment.user.surname}` : "—"
@@ -494,6 +495,49 @@ export default function TicketDetailPage() {
           <p className="text-sm" style={{ color: "var(--color-text-muted)", lineHeight: "1.75" }}>{ticket.description}</p>
         </div>
       </div>
+
+      {/* ── 2b. Archivo adjunto ─────────────────────────────── */}
+      {ticket.attachments && ticket.attachments.length > 0 && (
+        <div style={{ marginBottom: "1.25rem" }}>
+          <p style={sectionLabelStyle}>Archivo adjunto</p>
+          <div
+            className="rounded-xl"
+            style={{
+              backgroundColor: "var(--color-surface)",
+              border: "1px solid var(--color-border)",
+              boxShadow: "var(--shadow-sm)",
+              padding: "1rem 1.75rem",
+            }}
+          >
+            {ticket.attachments.map((att) => (
+              <a
+                key={att.id}
+                href={att.file_path ?? "#"}
+                download={att.filename ?? "archivo"}
+                className="inline-flex items-center gap-2 rounded-lg transition"
+                style={{
+                  color: "var(--color-primary)",
+                  fontSize: "0.9375rem",
+                  fontWeight: 500,
+                  textDecoration: "none",
+                  padding: "0.375rem 0.75rem",
+                  backgroundColor: "var(--color-primary-light)",
+                  border: "1px solid color-mix(in oklab, var(--color-primary) 25%, transparent)",
+                }}
+                onMouseEnter={(e) =>
+                  ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-primary-highlight)")
+                }
+                onMouseLeave={(e) =>
+                  ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-primary-light)")
+                }
+              >
+                <Paperclip size={14} />
+                {att.filename ?? "Descargar archivo"}
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ── 3. Seguimiento ──────────────────────────────────── */}
       <div style={{ marginBottom: "1.25rem" }}>

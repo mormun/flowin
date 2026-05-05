@@ -75,14 +75,36 @@ export default function NewTicketPage() {
     try {
       setLoading(true)
       const userEmail = localStorage.getItem("userEmail")
+
+      // 1. Crear ticket
       const res = await fetch("/api/tickets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title, description, category, priority, userEmail }),
       })
       if (!res.ok) { toast.error("Error al crear el ticket"); return }
-      toast.success("Ticket creado correctamente", { description: "Tu solicitud ha sido registrada" })
-      router.push("/dashboard/tickets")
+
+      const newTicket = await res.json()
+
+      // 2. Subir archivo si existe
+      if (file) {
+        const formData = new FormData()
+        formData.append("file", file)
+        formData.append("ticketId", String(newTicket.id))
+
+        const uploadRes = await fetch("/api/attachments", {
+          method: "POST",
+          body: formData,
+        })
+        if (!uploadRes.ok) {
+          toast.warning("Ticket creado, pero hubo un error al subir el archivo")
+        }
+      }
+
+      toast.success("Ticket creado correctamente", {
+        description: "Tu solicitud ha sido registrada",
+      })
+      router.push("/dashboard/my-tickets")
     } catch {
       toast.error("Error al crear el ticket")
     } finally {
@@ -155,13 +177,19 @@ export default function NewTicketPage() {
 
             {/* Título */}
             <div className="flex flex-col gap-2">
-              <label className="text-base font-medium" style={{ color: "var(--color-text)" }}>
-                Título <span style={{ color: "var(--color-error)" }}>*</span>
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="text-base font-bold" style={{ color: "var(--color-text)" }}>
+                  Título <span style={{ color: "var(--color-error)" }}>*</span>
+                </label>
+                <span className="text-xs tabular-nums" style={{ color: title.length >= 140 ? "var(--color-error)" : "var(--color-text-faint)" }}>
+                  {title.length}/150
+                </span>
+              </div>
               <input
                 style={dynInput(title.length > 0)}
                 placeholder="Resumen breve del problema"
                 value={title}
+                maxLength={150}
                 onChange={(e) => setTitle(e.target.value)}
                 onFocus={(e) => (e.currentTarget.style.borderColor = "var(--color-primary)")}
                 onBlur={(e) => (e.currentTarget.style.borderColor = title ? "var(--color-primary)" : "var(--color-border)")}
@@ -170,9 +198,14 @@ export default function NewTicketPage() {
 
             {/* Descripción */}
             <div className="flex flex-col gap-2">
-              <label className="text-base font-medium" style={{ color: "var(--color-text)" }}>
-                Descripción <span style={{ color: "var(--color-error)" }}>*</span>
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="text-base font-bold" style={{ color: "var(--color-text)" }}>
+                  Descripción <span style={{ color: "var(--color-error)" }}>*</span>
+                </label>
+                <span className="text-xs tabular-nums" style={{ color: description.length >= 450 ? "var(--color-error)" : "var(--color-text-faint)" }}>
+                  {description.length}/500
+                </span>
+              </div>
               <textarea
                 className="resize-none rounded-lg outline-none transition"
                 style={{
@@ -185,6 +218,7 @@ export default function NewTicketPage() {
                 }}
                 placeholder="Describe el problema con el mayor detalle posible: qué ocurre, cuándo empezó, qué has intentado..."
                 value={description}
+                maxLength={500}
                 onChange={(e) => setDescription(e.target.value)}
                 onFocus={(e) => (e.currentTarget.style.borderColor = "var(--color-primary)")}
                 onBlur={(e) => (e.currentTarget.style.borderColor = description ? "var(--color-primary)" : "var(--color-border)")}
@@ -278,7 +312,18 @@ export default function NewTicketPage() {
                   <input
                     type="file"
                     className="hidden"
-                    onChange={(e) => { if (e.target.files?.[0]) setFile(e.target.files[0]) }}
+                    onChange={(e) => {
+                      const selected = e.target.files?.[0]
+                      if (!selected) return
+
+                      if (selected.size > 10 * 1024 * 1024) {
+                        toast.error("El archivo no puede superar los 10 MB")
+                        e.target.value = ""
+                        return
+                      }
+
+                      setFile(selected)
+                    }}
                   />
                 </label>
               )}

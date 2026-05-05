@@ -17,10 +17,10 @@ type Ticket = {
 }
 
 const PRIORITY_STYLES: Record<string, { bg: string; color: string }> = {
-  "Crítica": { bg: "var(--color-error-light)",   color: "var(--color-error)" },
-  "Alta":    { bg: "var(--color-warning-light)",  color: "var(--color-warning)" },
-  "Media":   { bg: "#fef9c3",                     color: "#854d0e" },
-  "Baja":    { bg: "var(--color-success-light)",  color: "var(--color-success)" },
+  "Crítica": { bg: "var(--color-error-light)", color: "var(--color-error)" },
+  "Alta": { bg: "var(--color-warning-light)", color: "var(--color-warning)" },
+  "Media": { bg: "#fef9c3", color: "#854d0e" },
+  "Baja": { bg: "var(--color-success-light)", color: "var(--color-success)" },
 }
 
 const STATUS_LABELS: Record<number, string> = {
@@ -29,12 +29,12 @@ const STATUS_LABELS: Record<number, string> = {
 }
 
 const STATUS_STYLES: Record<number, { bg: string; color: string }> = {
-  1: { bg: "#dbeafe",                      color: "#1d4ed8" },
-  2: { bg: "var(--color-error-light)",     color: "var(--color-error)" },
-  3: { bg: "var(--color-primary-light)",   color: "var(--color-primary)" },
-  4: { bg: "#fef9c3",                      color: "#854d0e" },
-  5: { bg: "var(--color-success-light)",   color: "var(--color-success)" },
-  6: { bg: "var(--color-surface-offset)",  color: "var(--color-text-muted)" },
+  1: { bg: "#dbeafe", color: "#1d4ed8" },
+  2: { bg: "var(--color-error-light)", color: "var(--color-error)" },
+  3: { bg: "var(--color-primary-light)", color: "var(--color-primary)" },
+  4: { bg: "#fef9c3", color: "#854d0e" },
+  5: { bg: "var(--color-success-light)", color: "var(--color-success)" },
+  6: { bg: "var(--color-surface-offset)", color: "var(--color-text-muted)" },
 }
 
 const Badge = ({ label, bg, color }: { label: string; bg: string; color: string }) => (
@@ -171,7 +171,7 @@ export default function MyTicketsPage() {
         </div>
         <Link
           href="/dashboard/tickets/new"
-          className="flex items-center gap-2 rounded-full font-medium transition whitespace-nowrap"
+          className="flex items-center gap-2 rounded-full font-bold transition whitespace-nowrap"
           style={{ backgroundColor: "var(--color-primary)", color: "#fff", fontSize: "0.9375rem", padding: "0.55rem 1.5rem", textDecoration: "none" }}
           onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-primary-hover)")}
           onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-primary)")}
@@ -211,22 +211,22 @@ export default function MyTicketsPage() {
             <thead>
               <tr style={{ borderBottom: "1px solid var(--color-border)" }}>
                 {/* ← Título cambiado a "ID TICKET" */}
-                <SortTh label="ID Ticket" value="id"       current={sortBy} firstCol onClick={() => { setSortBy("id");       setCurrentPage(1) }} />
-                <SortTh label="Título"    value="title"    current={sortBy}          onClick={() => { setSortBy("title");    setCurrentPage(1) }} />
+                <SortTh label="ID Ticket" value="id" current={sortBy} firstCol onClick={() => { setSortBy("id"); setCurrentPage(1) }} />
+                <SortTh label="Título" value="title" current={sortBy} onClick={() => { setSortBy("title"); setCurrentPage(1) }} />
                 <th
                   className="pr-4 text-left text-sm font-semibold uppercase tracking-wider"
                   style={{ color: "var(--color-text-muted)", paddingTop: "1rem", paddingBottom: "1rem" }}
                 >
                   Categoría
                 </th>
-                <SortTh label="Prioridad" value="priority" current={sortBy}          onClick={() => { setSortBy("priority"); setCurrentPage(1) }} />
+                <SortTh label="Prioridad" value="priority" current={sortBy} onClick={() => { setSortBy("priority"); setCurrentPage(1) }} />
                 <th
                   className="pr-4 text-left text-sm font-semibold uppercase tracking-wider"
                   style={{ color: "var(--color-text-muted)", paddingTop: "1rem", paddingBottom: "1rem" }}
                 >
                   Estado
                 </th>
-                <SortTh label="Fecha" value="date" current={sortBy}                  onClick={() => { setSortBy("date");     setCurrentPage(1) }} />
+                <SortTh label="Fecha" value="date" current={sortBy} onClick={() => { setSortBy("date"); setCurrentPage(1) }} />
               </tr>
             </thead>
             <tbody>
@@ -241,7 +241,7 @@ export default function MyTicketsPage() {
                 >
                   <td
                     className="text-base tabular-nums font-medium"
-                    style={{ paddingTop: "0.5rem", paddingBottom: "0.5rem", color: "var(--color-text-faint)", paddingLeft: "2rem", paddingRight: "1rem" }}
+                    style={{ paddingTop: "0.5rem", paddingBottom: "0.5rem", color: "var(--color-text)", paddingLeft: "2rem", paddingRight: "1rem" }}
                   >
                     #{t.id}
                   </td>
@@ -251,7 +251,7 @@ export default function MyTicketsPage() {
                     </span>
                   </td>
                   {/* ← Ahora muestra el nombre de la categoría */}
-                  <td className="text-base" style={{ paddingTop: "0.5rem", paddingBottom: "0.5rem", paddingRight: "1rem", color: "var(--color-text-muted)" }}>
+                  <td className="text-base" style={{ paddingTop: "0.5rem", paddingBottom: "0.5rem", paddingRight: "1rem", color: "var(--color-text)" }}>
                     {t.categories?.name ?? "—"}
                   </td>
                   <td style={{ paddingTop: "0.5rem", paddingBottom: "0.5rem", paddingRight: "1rem" }}>
@@ -268,7 +268,7 @@ export default function MyTicketsPage() {
                       color={STATUS_STYLES[t.status_id]?.color ?? "var(--color-text-muted)"}
                     />
                   </td>
-                  <td className="text-base tabular-nums" style={{ paddingTop: "0.5rem", paddingBottom: "0.5rem", paddingRight: "1rem", color: "var(--color-text-muted)" }}>
+                  <td className="text-base tabular-nums" style={{ paddingTop: "0.5rem", paddingBottom: "0.5rem", paddingRight: "1rem", color: "var(--color-text)" }}>
                     {new Date(t.created_at).toLocaleDateString("es-ES")}
                   </td>
                 </tr>
@@ -288,8 +288,13 @@ export default function MyTicketsPage() {
             <button
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               disabled={currentPage === 1}
-              className="rounded-lg px-3 py-1.5 text-sm font-medium transition disabled:opacity-40"
-              style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", color: "var(--color-text-muted)" }}
+              className="rounded-lg text-sm font-medium transition disabled:opacity-40"
+              style={{
+                backgroundColor: "var(--color-surface)",
+                border: "1px solid var(--color-border)",
+                color: "var(--color-text-muted)",
+                padding: "0.5rem 1rem",
+              }}
             >
               ←
             </button>
@@ -307,11 +312,12 @@ export default function MyTicketsPage() {
                   <button
                     key={i}
                     onClick={() => setCurrentPage(p as number)}
-                    className="rounded-lg px-3 py-1.5 text-sm font-medium transition"
+                    className="rounded-lg text-sm font-medium transition"
                     style={{
                       backgroundColor: currentPage === p ? "var(--color-primary)" : "var(--color-surface)",
                       border: "1px solid var(--color-border)",
                       color: currentPage === p ? "#fff" : "var(--color-text-muted)",
+                      padding: "0.5rem 1rem",
                     }}
                   >
                     {p}
@@ -321,8 +327,13 @@ export default function MyTicketsPage() {
             <button
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
-              className="rounded-lg px-3 py-1.5 text-sm font-medium transition disabled:opacity-40"
-              style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", color: "var(--color-text-muted)" }}
+              className="rounded-lg text-sm font-medium transition disabled:opacity-40"
+              style={{
+                backgroundColor: "var(--color-surface)",
+                border: "1px solid var(--color-border)",
+                color: "var(--color-text-muted)",
+                padding: "0.5rem 1rem",
+              }}
             >
               →
             </button>
