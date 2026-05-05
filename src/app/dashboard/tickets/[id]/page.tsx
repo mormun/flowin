@@ -1,0 +1,602 @@
+"use client"
+
+import { useEffect, useState, useRef } from "react"
+import { useParams, useRouter } from "next/navigation"
+import { toast } from "sonner"
+import { RefreshCcw, AlertTriangle, UserPlus, ThumbsUp, ArrowLeft, Send } from "lucide-react"
+import { Tooltip } from "@/components/ui/tooltip"
+import { getUserRole, getUserId, getUserEmail } from "@/lib/auth-client"
+
+type Ticket = {
+  id: number
+  title: string
+  description: string
+  priority: string
+  category_id: number
+  status_id: number
+  created_at: string
+  updated_at?: string | null
+  closed_at?: string | null
+  assigned_to?: number | null
+  assigned_user?: { id: number; name: string; surname: string } | null
+}
+
+type Comment = {
+  id: number
+  content: string
+  created_at: string
+  is_system?: boolean
+  user?: { name: string; surname: string; role?: string; email?: string }
+}
+
+const PRIORITY_STYLES: Record<string, { bg: string; color: string }> = {
+  "Crítica": { bg: "var(--color-error-light)", color: "var(--color-error)" },
+  "Alta":    { bg: "var(--color-warning-light)", color: "var(--color-warning)" },
+  "Media":   { bg: "#fef9c3", color: "#854d0e" },
+  "Baja":    { bg: "var(--color-success-light)", color: "var(--color-success)" },
+}
+
+const STATUS_LABELS: Record<number, string> = {
+  1: "Nuevo", 2: "Cancelado", 3: "Proceso",
+  4: "Pendiente", 5: "Solucionado", 6: "Cerrado",
+}
+
+const STATUS_STYLES: Record<number, { bg: string; color: string }> = {
+  1: { bg: "#dbeafe", color: "#1d4ed8" },
+  2: { bg: "var(--color-error-light)", color: "var(--color-error)" },
+  3: { bg: "var(--color-primary-light)", color: "var(--color-primary)" },
+  4: { bg: "#fef9c3", color: "#854d0e" },
+  5: { bg: "var(--color-success-light)", color: "var(--color-success)" },
+  6: { bg: "var(--color-surface-offset)", color: "var(--color-text-muted)" },
+}
+
+const sectionLabelStyle: React.CSSProperties = {
+  fontSize: "0.6875rem",
+  fontWeight: 700,
+  textTransform: "uppercase",
+  letterSpacing: "0.1em",
+  color: "var(--color-text-faint)",
+  marginBottom: "0.625rem",
+  paddingLeft: "0.25rem",
+}
+
+const metaLabelStyle: React.CSSProperties = {
+  fontSize: "0.6875rem",
+  fontWeight: 600,
+  textTransform: "uppercase",
+  letterSpacing: "0.08em",
+  color: "var(--color-text-faint)",
+}
+
+const DateTimeValue = ({ iso }: { iso?: string | null }) => {
+  if (!iso) return <span className="text-sm" style={{ color: "var(--color-text-faint)" }}>—</span>
+  const date = new Date(iso).toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" })
+  const time = new Date(iso).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })
+  return (
+    <span className="text-sm tabular-nums" style={{ color: "var(--color-text)" }}>
+      {date}
+      <span style={{ color: "var(--color-text-faint)", margin: "0 0.35rem" }}>·</span>
+      {time}
+    </span>
+  )
+}
+
+const Badge = ({ label, bg, color }: { label: string; bg: string; color: string }) => (
+  <span
+    className="inline-flex items-center rounded-full font-medium whitespace-nowrap"
+    style={{ backgroundColor: bg, color, padding: "0.10rem 0.75rem", fontSize: "0.875rem", lineHeight: 1.6 }}
+  >
+    {label}
+  </span>
+)
+
+const MetaCol = ({ label, children }: { label: string; children: React.ReactNode }) => (
+  <div className="flex flex-col gap-1">
+    <span style={metaLabelStyle}>{label}</span>
+    <div>{children}</div>
+  </div>
+)
+
+const IconBtn = ({
+  onClick, title, children, color, hoverBg,
+}: {
+  onClick: () => void
+  title: string
+  children: React.ReactNode
+  color: string
+  hoverBg: string
+}) => (
+  <Tooltip text={title}>
+    <button
+      onClick={onClick}
+      title={title}
+      className="flex items-center justify-center rounded-lg transition"
+      style={{ width: "36px", height: "36px", backgroundColor: "var(--color-surface-offset)", color, border: "1px solid var(--color-border)" }}
+      onMouseEnter={(e) => {
+        const el = e.currentTarget as HTMLElement
+        el.style.backgroundColor = hoverBg
+        el.style.color = color
+        el.style.borderColor = "transparent"
+      }}
+      onMouseLeave={(e) => {
+        const el = e.currentTarget as HTMLElement
+        el.style.backgroundColor = "var(--color-surface-offset)"
+        el.style.color = color
+        el.style.borderColor = "var(--color-border)"
+      }}
+    >
+      {children}
+    </button>
+  </Tooltip>
+)
+
+const Modal = ({
+  open, onClose, title, subtitle, children,
+}: {
+  open: boolean; onClose: () => void; title: string; subtitle?: string; children: React.ReactNode
+}) => {
+  if (!open) return null
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{ backgroundColor: "oklch(0 0 0 / 0.45)" }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div
+        className="w-full max-w-sm rounded-xl"
+        style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", boxShadow: "var(--shadow-lg)", padding: "2rem 2.5rem 2.5rem 2.5rem" }}
+      >
+        <div style={{ marginBottom: "1.75rem" }}>
+          <h3 className="text-lg font-semibold" style={{ color: "var(--color-text)" }}>{title}</h3>
+          {subtitle && <p className="text-sm mt-0.5" style={{ color: "var(--color-text-muted)" }}>{subtitle}</p>}
+        </div>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+const ModalSelect = ({ value, onChange, children }: { value: string | number; onChange: (v: string) => void; children: React.ReactNode }) => (
+  <select
+    value={value}
+    onChange={(e) => onChange(e.target.value)}
+    className="w-full rounded-lg outline-none"
+    style={{ padding: "0.625rem 0.875rem", fontSize: "0.9375rem", backgroundColor: "var(--color-bg)", border: "1px solid var(--color-border)", color: "var(--color-text)", marginBottom: "1.5rem", transition: "border-color 150ms" }}
+  >
+    {children}
+  </select>
+)
+
+const ModalFooter = ({ onClose, onConfirm, confirmLabel = "Guardar" }: { onClose: () => void; onConfirm: () => void; confirmLabel?: string }) => (
+  <>
+    <div style={{ height: "1px", backgroundColor: "var(--color-divider)", marginBottom: "1.5rem" }} />
+    <div className="flex justify-end gap-2">
+      <button
+        onClick={onClose}
+        className="rounded-lg px-4 py-2 text-sm font-medium transition"
+        style={{ backgroundColor: "transparent", border: "none", color: "var(--color-text-muted)", cursor: "pointer" }}
+        onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-surface-offset)")}
+        onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "transparent")}
+      >
+        Cancelar
+      </button>
+      <button
+        onClick={onConfirm}
+        className="rounded-full px-5 py-2 text-sm font-medium transition"
+        style={{ backgroundColor: "var(--color-primary)", color: "#fff", border: "none", cursor: "pointer" }}
+        onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-primary-hover)")}
+        onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-primary)")}
+      >
+        {confirmLabel}
+      </button>
+    </div>
+  </>
+)
+
+const BUBBLE = {
+  self:   { align: "flex-end"   as const, bg: "#01696f", color: "#ffffff", nameColor: "rgba(255,255,255,0.7)", br: "1rem 1rem 0.25rem 1rem" },
+  tech:   { align: "flex-start" as const, bg: "#cedcd8", color: "#1c2b2b", nameColor: "#01696f",               br: "1rem 1rem 1rem 0.25rem" },
+  admin:  { align: "flex-start" as const, bg: "#e7d7c4", color: "#2b1f10", nameColor: "#da7101",               br: "1rem 1rem 1rem 0.25rem" },
+  user:   { align: "flex-start" as const, bg: "#ebebeb", color: "#28251d", nameColor: "#7a7974",               br: "1rem 1rem 1rem 0.25rem" },
+  system: { align: "center"     as const, bg: "#e6e4df", color: "#7a7974", nameColor: "#bab9b4",               br: "9999px" },
+}
+
+function ChatBubble({ comment, isSelf }: { comment: Comment; isSelf: boolean }) {
+  const rawRole = comment.user?.role?.toLowerCase() ?? "user"
+  const bubbleRole = comment.is_system
+    ? "system"
+    : isSelf
+    ? "self"
+    : (rawRole as keyof typeof BUBBLE) in BUBBLE
+    ? (rawRole as keyof typeof BUBBLE)
+    : "user"
+
+  const s = BUBBLE[bubbleRole]
+  const authorLabel = comment.is_system ? "Sistema" : comment.user ? `${comment.user.name} ${comment.user.surname}` : "—"
+
+  const timestamp = new Date(comment.created_at).toLocaleString("es-ES", {
+    hour: "2-digit", minute: "2-digit", day: "numeric", month: "short",
+  })
+
+  if (bubbleRole === "system") {
+    return (
+      <div className="flex flex-col items-center gap-1">
+        <div style={{ backgroundColor: s.bg, color: s.color, borderRadius: s.br, padding: "0.25rem 1rem", fontSize: "0.75rem" }}>
+          {comment.content}
+        </div>
+        <p style={{ color: "#bab9b4", fontSize: "0.7rem" }}>{timestamp}</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col" style={{ alignItems: s.align }}>
+      <div style={{ backgroundColor: s.bg, color: s.color, maxWidth: "68%", minWidth: "120px", borderRadius: s.br, padding: "0.75rem 1.125rem" }}>
+        {!isSelf && (
+          <p style={{ color: s.nameColor, fontSize: "0.75rem", fontWeight: 600, marginBottom: "0.375rem" }}>
+            {authorLabel}
+          </p>
+        )}
+        <p style={{ fontSize: "0.875rem", lineHeight: "1.6" }}>{comment.content}</p>
+      </div>
+      <p style={{ color: "#bab9b4", fontSize: "0.75rem", marginTop: "0.25rem", paddingInline: "0.25rem" }}>
+        {timestamp}
+      </p>
+    </div>
+  )
+}
+
+const getAllowedStatusTransitions = (currentStatusId: number, isAssignedToMe: boolean): { id: number; label: string }[] => {
+  if (currentStatusId === 3) {
+    const t: { id: number; label: string }[] = [{ id: 4, label: "Pendiente" }]
+    if (isAssignedToMe) t.push({ id: 5, label: "Solucionado" })
+    return t
+  }
+  if (currentStatusId === 4) return [{ id: 3, label: "Proceso" }]
+  return []
+}
+
+// ── Page ────────────────────────────────────────────────────────
+export default function TicketDetailPage() {
+  const params = useParams()
+  const router = useRouter()
+  const id = Array.isArray(params.id) ? params.id[0] : params.id
+  const chatEndRef = useRef<HTMLDivElement>(null)
+
+  const [role, setRole] = useState<string | null>(null)
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null)
+  const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null)
+  const [ticket, setTicket] = useState<Ticket | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [categories, setCategories] = useState<{ id: number; name: string }[]>([])
+  const [newStatus, setNewStatus] = useState<number | null>(null)
+  const [openStatusModal, setOpenStatusModal] = useState(false)
+  const [newPriority, setNewPriority] = useState("")
+  const [openPriorityModal, setOpenPriorityModal] = useState(false)
+  const [technicians, setTechnicians] = useState<any[]>([])
+  const [selectedTech, setSelectedTech] = useState<number | null>(null)
+  const [openAssignModal, setOpenAssignModal] = useState(false)
+  const [openSolutionModal, setOpenSolutionModal] = useState(false)
+  const [comments, setComments] = useState<Comment[]>([])
+  const [newComment, setNewComment] = useState("")
+
+  useEffect(() => {
+    const r = getUserRole(); const uid = getUserId(); const email = getUserEmail()
+    setRole(r); setCurrentUserId(uid); setCurrentUserEmail(email)
+  }, [])
+
+  // ── Carga del ticket
+  useEffect(() => {
+    if (!id) return
+    const loadTicket = async () => {
+      try {
+        const res = await fetch(`/api/tickets/${id}`)
+        if (!res.ok) { setLoading(false); return }
+        const data = await res.json()
+        setTicket(data)
+        setNewStatus(data.status_id)
+      } catch (e) {
+        console.error("Error cargando ticket:", e)
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadTicket()
+  }, [id])
+
+  // ── Carga de comentarios
+  useEffect(() => {
+    if (!id) return
+    fetch(`/api/tickets/comments/${id}`)
+      .then(r => r.ok ? r.json() : [])
+      .then(data => setComments(Array.isArray(data) ? data : []))
+  }, [id])
+
+  useEffect(() => {
+    fetch("/api/categories?").then(r => r.ok ? r.json() : []).then(setCategories).catch(() => { })
+  }, [])
+
+  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }) }, [comments])
+
+  const loadTechnicians = async () => { const res = await fetch("/api/users/tech"); setTechnicians(await res.json()) }
+  const patch = (body: object) => fetch("/api/tickets/update", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: ticket!.id, ...body }) })
+
+  const refreshComments = async () => {
+    const res = await fetch(`/api/tickets/comments/${id}`)
+    if (!res.ok) return
+    const data = await res.json()
+    setComments(Array.isArray(data) ? data : [])
+  }
+
+  const getCategoryName = (catId: number) => categories.find(c => c.id === catId)?.name ?? "Categoría desactivada"
+
+  const addSystemComment = async (content: string) => {
+    await fetch("/api/tickets/comments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ticketId: ticket!.id, content, is_system: true }),
+    })
+    await new Promise(resolve => setTimeout(resolve, 100))
+    await refreshComments()
+  }
+
+  const handleUpdate = async () => {
+    if (!ticket || newStatus === null) return
+    await patch({ status_id: newStatus })
+    setTicket({ ...ticket, status_id: newStatus })
+    setOpenStatusModal(false)
+    await addSystemComment(`Estado cambiado a "${STATUS_LABELS[newStatus]}"`)
+    toast.success("Estado actualizado")
+  }
+
+  const handlePriorityUpdate = async () => {
+    if (!ticket || !newPriority) return
+    await patch({ priority: newPriority })
+    setTicket({ ...ticket, priority: newPriority })
+    setOpenPriorityModal(false)
+    await addSystemComment(`Prioridad cambiada a "${newPriority}"`)
+    toast.success("Prioridad actualizada")
+  }
+
+  const handleAssign = async () => {
+    if (!ticket || !selectedTech) return
+    await patch({ assigned_to: selectedTech })
+    const assignedUser = technicians.find(t => t.id === selectedTech)
+    setTicket({ ...ticket, assigned_to: selectedTech, assigned_user: assignedUser })
+    setOpenAssignModal(false)
+    await addSystemComment(`Ticket asignado a ${assignedUser?.name ?? ""} ${assignedUser?.surname ?? ""}`.trim())
+    toast.success("Técnico asignado")
+  }
+
+  const handleAddComment = async () => {
+    if (!newComment.trim()) return
+    const userEmail = localStorage.getItem("userEmail")
+    await fetch("/api/tickets/comments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ticketId: ticket?.id, userEmail, content: newComment }),
+    })
+    await refreshComments()
+    setNewComment("")
+  }
+
+  const handleAcceptSolution = async () => {
+    if (!ticket) return
+    await patch({ status_id: 6 })
+    setTicket({ ...ticket, status_id: 6 })
+    setOpenSolutionModal(false)
+    await addSystemComment("Solución aceptada. Ticket cerrado.")
+    toast.success("Solución aceptada. Ticket cerrado.")
+  }
+
+  const handleRejectSolution = async () => {
+    if (!ticket) return
+    await patch({ status_id: 3 })
+    setTicket({ ...ticket, status_id: 3 })
+    setOpenSolutionModal(false)
+    await addSystemComment("Solución rechazada. El ticket vuelve a proceso.")
+    toast.error("Solución rechazada. El ticket vuelve a proceso.")
+  }
+
+  if (loading) return (
+    <div style={{ width: "100%", padding: "2rem 3rem 2rem 2.5rem" }} className="flex items-center gap-2">
+      <svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
+      <span className="text-sm" style={{ color: "var(--color-text-muted)" }}>Cargando ticket…</span>
+    </div>
+  )
+  if (!ticket) return null
+
+  const isAssignedToMe = ticket.assigned_to === currentUserId
+  const allowedTransitions = getAllowedStatusTransitions(ticket.status_id, isAssignedToMe)
+
+  return (
+    <div style={{ width: "100%", padding: "0 3rem 2rem 2.5rem" }}>
+
+      {/* ── Botón Volver ─────────────────────────────────────── */}
+      <div className="flex items-center" style={{ marginBottom: "1.25rem" }}>
+        <button
+          onClick={() => router.back()}
+          className="flex items-center gap-1.5 text-sm font-medium transition"
+          style={{ color: "var(--color-text-muted)", background: "none", border: "none", cursor: "pointer", padding: "0.375rem 0.5rem", borderRadius: "var(--radius-md)" }}
+          onMouseEnter={(e) => { const el = e.currentTarget as HTMLElement; el.style.backgroundColor = "var(--color-surface-offset)"; el.style.color = "var(--color-text)" }}
+          onMouseLeave={(e) => { const el = e.currentTarget as HTMLElement; el.style.backgroundColor = "transparent"; el.style.color = "var(--color-text-muted)" }}
+        >
+          <ArrowLeft size={15} />
+          Volver
+        </button>
+      </div>
+
+      {/* ── 1. Fila superior: Detalles + Acciones ────────────── */}
+      <div className="flex items-stretch gap-5" style={{ marginBottom: "1.25rem" }}>
+
+        <div className="flex flex-col flex-1">
+          <p style={sectionLabelStyle}>Detalles del ticket</p>
+          <div className="rounded-xl flex-1" style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", boxShadow: "var(--shadow-sm)", padding: "1.25rem 1.75rem" }}>
+            <div className="flex flex-wrap items-start gap-x-10 gap-y-4">
+              <MetaCol label="Id ticket">
+                <span className="text-sm font-bold tabular-nums" style={{ color: "var(--color-text)" }}>#{ticket.id}</span>
+              </MetaCol>
+              <MetaCol label="Fecha de creación"><DateTimeValue iso={ticket.created_at} /></MetaCol>
+              <MetaCol label="Categoría">
+                <span className="text-sm" style={{ color: "var(--color-text)" }}>{getCategoryName(ticket.category_id)}</span>
+              </MetaCol>
+              <MetaCol label="Estado">
+                <Badge label={STATUS_LABELS[ticket.status_id] ?? "—"} bg={STATUS_STYLES[ticket.status_id]?.bg ?? "var(--color-bg)"} color={STATUS_STYLES[ticket.status_id]?.color ?? "var(--color-text-muted)"} />
+              </MetaCol>
+              <MetaCol label="Prioridad">
+                <Badge label={ticket.priority} bg={PRIORITY_STYLES[ticket.priority]?.bg ?? "var(--color-bg)"} color={PRIORITY_STYLES[ticket.priority]?.color ?? "var(--color-text-muted)"} />
+              </MetaCol>
+              <MetaCol label="Asignado a">
+                <span className="text-sm" style={{ color: ticket.assigned_user ? "var(--color-text)" : "var(--color-text-faint)" }}>
+                  {ticket.assigned_user ? `${ticket.assigned_user.name} ${ticket.assigned_user.surname}` : "Sin asignar"}
+                </span>
+              </MetaCol>
+              <MetaCol label="Última actualización"><DateTimeValue iso={ticket.updated_at} /></MetaCol>
+              <MetaCol label="Fecha de cierre"><DateTimeValue iso={ticket.closed_at} /></MetaCol>
+            </div>
+          </div>
+        </div>
+
+        {(role === "admin" || role === "tech" || (role === "user" && ticket.status_id === 5)) && (
+          <div className="flex flex-col" style={{ minWidth: "fit-content" }}>
+            <p style={sectionLabelStyle}>Acciones</p>
+            <div className="rounded-xl flex-1 flex flex-row items-center gap-3" style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", boxShadow: "var(--shadow-sm)", padding: "1.25rem 1.5rem" }}>
+              {(role === "admin" || (role === "tech" && allowedTransitions.length > 0)) && (
+                <IconBtn title="Cambiar estado" onClick={() => setOpenStatusModal(true)} color="var(--color-primary)" hoverBg="var(--color-primary-light)">
+                  <RefreshCcw size={15} />
+                </IconBtn>
+              )}
+              {(role === "admin" || (role === "tech" && (isAssignedToMe || ticket.assigned_to === null))) && (
+                <IconBtn title="Cambiar prioridad" onClick={() => { setNewPriority(ticket.priority); setOpenPriorityModal(true) }} color="var(--color-warning)" hoverBg="var(--color-warning-light)">
+                  <AlertTriangle size={15} />
+                </IconBtn>
+              )}
+              {(role === "admin" || (role === "tech" && (isAssignedToMe || ticket.assigned_to === null))) && (
+                <IconBtn title="Asignar técnico" onClick={async () => { await loadTechnicians(); setOpenAssignModal(true) }} color="var(--color-blue)" hoverBg="var(--color-blue-highlight)">
+                  <UserPlus size={15} />
+                </IconBtn>
+              )}
+              {role === "user" && ticket.status_id === 5 && (
+                <IconBtn title="Ver solución" onClick={() => setOpenSolutionModal(true)} color="var(--color-success)" hoverBg="var(--color-success-light)">
+                  <ThumbsUp size={15} />
+                </IconBtn>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── 2. Descripción ───────────────────────────────────── */}
+      <div style={{ marginBottom: "1.25rem" }}>
+        <p style={sectionLabelStyle}>Descripción del ticket</p>
+        <div className="rounded-xl" style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", boxShadow: "var(--shadow-sm)", padding: "2rem" }}>
+          <h3 className="text-lg font-semibold" style={{ color: "var(--color-text)", marginBottom: "0.875rem" }}>{ticket.title}</h3>
+          <p className="text-sm" style={{ color: "var(--color-text-muted)", lineHeight: "1.75" }}>{ticket.description}</p>
+        </div>
+      </div>
+
+      {/* ── 3. Seguimiento ──────────────────────────────────── */}
+      <div style={{ marginBottom: "1.25rem" }}>
+        <div style={{ marginBottom: "0.625rem", paddingLeft: "0.25rem" }}>
+          <span style={sectionLabelStyle}>Seguimiento del ticket</span>
+        </div>
+        <div className="rounded-xl overflow-hidden" style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", boxShadow: "var(--shadow-sm)" }}>
+          <div className="flex flex-col gap-4 overflow-y-auto" style={{ minHeight: "300px", maxHeight: "420px", padding: "2rem 3rem" }}>
+            {comments.length === 0 ? (
+              <div className="flex flex-1 items-center justify-center py-12">
+                <p className="text-sm" style={{ color: "var(--color-text-faint)" }}>Sin mensajes aún. Sé el primero en comentar.</p>
+              </div>
+            ) : (
+              comments.map((c) => (
+                <ChatBubble key={c.id} comment={c} isSelf={(c as any).user_id === currentUserId} />
+              ))
+            )}
+            <div ref={chatEndRef} />
+          </div>
+          <div className="flex items-center gap-3 px-6 py-4" style={{ borderTop: "1px solid var(--color-border)" }}>
+            <input
+              className="flex-1 rounded-lg outline-none"
+              style={{ padding: "0.625rem 0.875rem", fontSize: "0.9375rem", backgroundColor: "var(--color-bg)", border: newComment ? "1px solid var(--color-primary)" : "1px solid var(--color-border)", color: "var(--color-text)", transition: "border-color 150ms" }}
+              placeholder="Escribe un mensaje…"
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleAddComment()}
+              onFocus={(e) => (e.currentTarget.style.borderColor = "var(--color-primary)")}
+              onBlur={(e) => (e.currentTarget.style.borderColor = newComment ? "var(--color-primary)" : "var(--color-border)")}
+            />
+            <button
+              onClick={handleAddComment}
+              className="flex items-center justify-center rounded-full transition"
+              style={{ width: "40px", height: "40px", flexShrink: 0, backgroundColor: newComment.trim() ? "var(--color-primary)" : "var(--color-surface-offset)", color: newComment.trim() ? "#fff" : "var(--color-text-faint)", border: "none", cursor: "pointer", transition: "background-color 150ms" }}
+              onMouseEnter={(e) => newComment.trim() && ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-primary-hover)")}
+              onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = newComment.trim() ? "var(--color-primary)" : "var(--color-surface-offset)")}
+            >
+              <Send size={16} />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Modales ──────────────────────────────────────────── */}
+
+      <Modal open={openStatusModal} onClose={() => setOpenStatusModal(false)} title="Cambiar estado" subtitle="Selecciona el nuevo estado del ticket">
+        <ModalSelect value={newStatus ?? ""} onChange={(v) => setNewStatus(Number(v))}>
+          <option value="" disabled>Selecciona estado</option>
+          {role === "tech" && allowedTransitions.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+          {role === "admin" && (<><option value={1}>Nuevo</option><option value={2}>Cancelado</option><option value={3}>Proceso</option><option value={4}>Pendiente</option><option value={5}>Solucionado</option><option value={6}>Cerrado</option></>)}
+        </ModalSelect>
+        <ModalFooter onClose={() => setOpenStatusModal(false)} onConfirm={handleUpdate} confirmLabel="Actualizar estado" />
+      </Modal>
+
+      <Modal open={openPriorityModal} onClose={() => setOpenPriorityModal(false)} title="Cambiar prioridad" subtitle="Selecciona la nueva prioridad del ticket">
+        <ModalSelect value={newPriority} onChange={setNewPriority}>
+          <option value="Baja">Baja</option>
+          <option value="Media">Media</option>
+          <option value="Alta">Alta</option>
+          <option value="Crítica">Crítica</option>
+        </ModalSelect>
+        <ModalFooter onClose={() => setOpenPriorityModal(false)} onConfirm={handlePriorityUpdate} confirmLabel="Actualizar prioridad" />
+      </Modal>
+
+      <Modal open={openAssignModal} onClose={() => { setOpenAssignModal(false); setSelectedTech(null) }} title="Asignar técnico" subtitle="Elige el técnico responsable de este ticket">
+        <ModalSelect value={selectedTech ?? ""} onChange={(v) => setSelectedTech(Number(v))}>
+          <option value="">Selecciona técnico</option>
+          {technicians.map(t => <option key={t.id} value={t.id}>{t.name} {t.surname}</option>)}
+        </ModalSelect>
+        <ModalFooter onClose={() => { setOpenAssignModal(false); setSelectedTech(null) }} onConfirm={handleAssign} confirmLabel="Asignar" />
+      </Modal>
+
+      <Modal open={openSolutionModal} onClose={() => setOpenSolutionModal(false)} title="Solución propuesta" subtitle="Revisa los mensajes y decide si aceptas la solución">
+        <div className="flex flex-col gap-3 overflow-y-auto rounded-lg" style={{ maxHeight: "220px", backgroundColor: "var(--color-bg)", border: "1px solid var(--color-border)", padding: "0.875rem", marginBottom: "1.5rem" }}>
+          {comments.length === 0
+            ? <p className="text-sm" style={{ color: "var(--color-text-faint)" }}>Sin mensajes aún.</p>
+            : comments.map(c => (
+              <div key={c.id} className="rounded-lg p-3" style={{ backgroundColor: "var(--color-surface-offset)" }}>
+                <p className="text-sm" style={{ color: "var(--color-text)" }}>{c.content}</p>
+                <p className="mt-1 text-xs" style={{ color: "var(--color-text-faint)" }}>{new Date(c.created_at).toLocaleString("es-ES")}</p>
+              </div>
+            ))}
+        </div>
+        <div style={{ height: "1px", backgroundColor: "var(--color-divider)", marginBottom: "1.5rem" }} />
+        <div className="flex justify-end gap-2">
+          <button onClick={() => setOpenSolutionModal(false)} className="rounded-lg px-4 py-2 text-sm font-medium transition" style={{ backgroundColor: "transparent", border: "none", color: "var(--color-text-muted)", cursor: "pointer" }}
+            onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-surface-offset)")}
+            onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "transparent")}>
+            Cancelar
+          </button>
+          <button onClick={handleRejectSolution} className="rounded-full px-5 py-2 text-sm font-medium transition" style={{ backgroundColor: "var(--color-error)", color: "#fff", border: "none", cursor: "pointer" }}
+            onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.opacity = "0.9")}
+            onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.opacity = "1")}>
+            Rechazar
+          </button>
+          <button onClick={handleAcceptSolution} className="rounded-full px-5 py-2 text-sm font-medium transition" style={{ backgroundColor: "var(--color-success)", color: "#fff", border: "none", cursor: "pointer" }}
+            onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.opacity = "0.9")}
+            onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.opacity = "1")}>
+            Aceptar solución
+          </button>
+        </div>
+      </Modal>
+
+    </div>
+  )
+}
