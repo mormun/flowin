@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma"
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
   const email = searchParams.get("email")
-  const role  = searchParams.get("role")
+  const role = searchParams.get("role")
 
   if (!email || !role)
     return NextResponse.json({ error: "Faltan parámetros" }, { status: 400 })
@@ -62,11 +62,11 @@ export async function GET(req: Request) {
 
       return NextResponse.json({
         cards: [
-          { title: "Tickets abiertos",        value: abiertos,     type: "number" },
-          { title: "Abiertos este mes",        value: abiertosMes,  type: "number" },
-          { title: "Tickets solucionados",     value: solucionados, type: "number" },
-          { title: "Tickets cerrados",         value: cerrados,     type: "number" },
-          { title: "Categoría más utilizada",  value: topCategoria, type: "text"   },
+          { title: "Tickets abiertos", value: abiertos, type: "number" },
+          { title: "Abiertos este mes", value: abiertosMes, type: "number" },
+          { title: "Tickets solucionados", value: solucionados, type: "number" },
+          { title: "Tickets cerrados", value: cerrados, type: "number" },
+          { title: "Categoría más utilizada", value: topCategoria, type: "text" },
         ],
       })
     }
@@ -79,23 +79,49 @@ export async function GET(req: Request) {
       const now = new Date()
       const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
 
-      const [sinAsignar, misTickets, cerradosMes] = await Promise.all([
+      const [cerradosTotales, cerradosMes, enProceso, categorias] = await Promise.all([
+        // Tickets cerrados en total asignados al técnico
         prisma.tickets.count({
-          where: { assigned_to: null, status: { name: { notIn: ["Cerrado", "Cancelado"] } } },
+          where: { assigned_to: user.id, status: { name: "Cerrado" } },
         }),
+        // Tickets cerrados en el último mes asignados al técnico
         prisma.tickets.count({
-          where: { assigned_to: user.id, status: { name: { notIn: ["Cerrado", "Cancelado"] } } },
+          where: {
+            assigned_to: user.id,
+            status: { name: "Cerrado" },
+            closed_at: { gte: firstOfMonth },
+          },
         }),
+        // Tickets en proceso asignados al técnico
         prisma.tickets.count({
-          where: { assigned_to: user.id, status: { name: "Cerrado" }, closed_at: { gte: firstOfMonth } },
+          where: { assigned_to: user.id, status: { name: "Proceso" } },
+        }),
+        // Categoría más asignada al técnico
+        prisma.tickets.groupBy({
+          by: ["category_id"],
+          where: { assigned_to: user.id, category_id: { not: null } },
+          _count: { category_id: true },
+          orderBy: { _count: { category_id: "desc" } },
+          take: 1,
         }),
       ])
 
+      // Resolver nombre de la categoría más asignada
+      let topCategoria = "—"
+      if (categorias.length > 0 && categorias[0].category_id) {
+        const cat = await prisma.categories.findUnique({
+          where: { id: categorias[0].category_id },
+          select: { name: true },
+        })
+        if (cat) topCategoria = cat.name
+      }
+
       return NextResponse.json({
         cards: [
-          { title: "Sin asignar",       value: sinAsignar,   type: "number" },
-          { title: "Mis tickets",       value: misTickets,   type: "number" },
-          { title: "Cerrados este mes", value: cerradosMes,  type: "number" },
+          { title: "Tickets cerrados", value: cerradosTotales, type: "number" },
+          { title: "Cerrados este mes", value: cerradosMes, type: "number" },
+          { title: "Tickets en proceso", value: enProceso, type: "number" },
+          { title: "Categoría más utilizada", value: topCategoria, type: "text" },
         ],
       })
     }
@@ -110,9 +136,9 @@ export async function GET(req: Request) {
 
       return NextResponse.json({
         cards: [
-          { title: "Usuarios activos",   value: usuariosActivos,   type: "number" },
+          { title: "Usuarios activos", value: usuariosActivos, type: "number" },
           { title: "Categorías activas", value: categoriasActivas, type: "number" },
-          { title: "Tickets totales",    value: ticketsTotales,    type: "number" },
+          { title: "Tickets totales", value: ticketsTotales, type: "number" },
         ],
       })
     }

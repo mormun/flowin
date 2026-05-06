@@ -20,7 +20,7 @@ const SHORTCUTS: Record<string, { label: string; icon: React.ReactNode; href: st
   ],
   tech: [
     { label: "Bandeja",      icon: <Inbox size={28} />,      href: "/dashboard/bandeja",     description: "Todos los tickets asignados" },
-    { label: "Mis tickets",  icon: <Ticket size={28} />,     href: "/dashboard/tickets/my",  description: "Tickets a tu cargo" },
+    { label: "Tickets",      icon: <Ticket size={28} />,     href: "/dashboard/tickets",     description: "Todos los tickets" },
     { label: "Abrir ticket", icon: <PlusCircle size={28} />, href: "/dashboard/tickets/new", description: "Crea una nueva solicitud" },
     { label: "Perfil",       icon: <User size={28} />,       href: "/dashboard/profile",     description: "Gestiona tu cuenta" },
   ],

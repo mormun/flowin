@@ -75,6 +75,7 @@ export default function NewTicketPage() {
     try {
       setLoading(true)
       const userEmail = localStorage.getItem("userEmail")
+      const userRole = localStorage.getItem("userRole") // 👈 leer el rol
 
       // 1. Crear ticket
       const res = await fetch("/api/tickets", {
@@ -104,7 +105,13 @@ export default function NewTicketPage() {
       toast.success("Ticket creado correctamente", {
         description: "Tu solicitud ha sido registrada",
       })
-      router.push("/dashboard/my-tickets")
+
+      // 👇 Redirigir según rol
+      if (userRole === "admin" || userRole === "tech") {
+        router.push("/dashboard/tickets")
+      } else {
+        router.push("/dashboard/my-tickets")
+      }
     } catch {
       toast.error("Error al crear el ticket")
     } finally {

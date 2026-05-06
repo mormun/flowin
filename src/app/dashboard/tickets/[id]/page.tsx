@@ -110,7 +110,6 @@ const IconBtn = ({
   <Tooltip text={title}>
     <button
       onClick={onClick}
-      title={title}
       className="flex items-center justify-center rounded-lg transition"
       style={{ width: "36px", height: "36px", backgroundColor: "var(--color-surface-offset)", color, border: "1px solid var(--color-border)" }}
       onMouseEnter={(e) => {
@@ -174,8 +173,8 @@ const ModalFooter = ({ onClose, onConfirm, confirmLabel = "Guardar" }: { onClose
     <div className="flex justify-end gap-2">
       <button
         onClick={onClose}
-        className="rounded-lg px-4 py-2 text-sm font-medium transition"
-        style={{ backgroundColor: "transparent", border: "none", color: "var(--color-text-muted)", cursor: "pointer" }}
+        className="rounded-lg text-sm font-medium transition"
+        style={{ backgroundColor: "transparent", border: "none", color: "var(--color-text-muted)", cursor: "pointer", padding: "0.5rem 1rem" }}
         onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-surface-offset)")}
         onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "transparent")}
       >
@@ -183,8 +182,8 @@ const ModalFooter = ({ onClose, onConfirm, confirmLabel = "Guardar" }: { onClose
       </button>
       <button
         onClick={onConfirm}
-        className="rounded-full px-5 py-2 text-sm font-medium transition"
-        style={{ backgroundColor: "var(--color-primary)", color: "#fff", border: "none", cursor: "pointer" }}
+        className="rounded-full text-sm font-medium transition"
+        style={{ backgroundColor: "var(--color-primary)", color: "#fff", border: "none", cursor: "pointer", padding: "0.5rem 1.25rem" }}
         onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-primary-hover)")}
         onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-primary)")}
       >
@@ -363,8 +362,17 @@ export default function TicketDetailPage() {
     if (!ticket || !selectedTech) return
     await patch({ assigned_to: selectedTech })
     const assignedUser = technicians.find(t => t.id === selectedTech)
-    setTicket({ ...ticket, assigned_to: selectedTech, assigned_user: assignedUser })
+
+    // Refrescar ticket completo desde la API
+    const res = await fetch(`/api/tickets/${id}`)
+    if (res.ok) {
+      const updated = await res.json()
+      setTicket(updated)
+      setNewStatus(updated.status_id)
+    }
+
     setOpenAssignModal(false)
+    setSelectedTech(null)
     await addSystemComment(`Ticket asignado a ${assignedUser?.name ?? ""} ${assignedUser?.surname ?? ""}`.trim())
     toast.success("Técnico asignado")
   }
@@ -458,33 +466,34 @@ export default function TicketDetailPage() {
           </div>
         </div>
 
-        {(role === "admin" || role === "tech" || (role === "user" && ticket.status_id === 5)) && (
-          <div className="flex flex-col" style={{ minWidth: "fit-content" }}>
-            <p style={sectionLabelStyle}>Acciones</p>
-            <div className="rounded-xl flex-1 flex flex-row items-center gap-3" style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", boxShadow: "var(--shadow-sm)", padding: "1.25rem 1.5rem" }}>
-              {(role === "admin" || (role === "tech" && allowedTransitions.length > 0)) && (
-                <IconBtn title="Cambiar estado" onClick={() => setOpenStatusModal(true)} color="var(--color-primary)" hoverBg="var(--color-primary-light)">
-                  <RefreshCcw size={15} />
-                </IconBtn>
-              )}
-              {(role === "admin" || (role === "tech" && (isAssignedToMe || ticket.assigned_to === null))) && (
-                <IconBtn title="Cambiar prioridad" onClick={() => { setNewPriority(ticket.priority); setOpenPriorityModal(true) }} color="var(--color-warning)" hoverBg="var(--color-warning-light)">
-                  <AlertTriangle size={15} />
-                </IconBtn>
-              )}
-              {(role === "admin" || (role === "tech" && (isAssignedToMe || ticket.assigned_to === null))) && (
-                <IconBtn title="Asignar técnico" onClick={async () => { await loadTechnicians(); setOpenAssignModal(true) }} color="var(--color-blue)" hoverBg="var(--color-blue-highlight)">
-                  <UserPlus size={15} />
-                </IconBtn>
-              )}
-              {role === "user" && ticket.status_id === 5 && (
-                <IconBtn title="Ver solución" onClick={() => setOpenSolutionModal(true)} color="var(--color-success)" hoverBg="var(--color-success-light)">
-                  <ThumbsUp size={15} />
-                </IconBtn>
-              )}
+        {(role === "admin" || role === "tech" || (role === "user" && ticket.status_id === 5)) &&
+          ticket.status_id !== 6 && ticket.status_id !== 2 && (
+            <div className="flex flex-col" style={{ minWidth: "fit-content" }}>
+              <p style={sectionLabelStyle}>Acciones</p>
+              <div className="rounded-xl flex-1 flex flex-row items-center gap-3" style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", boxShadow: "var(--shadow-sm)", padding: "1.25rem 1.5rem" }}>
+                {(role === "admin" || (role === "tech" && allowedTransitions.length > 0)) && (
+                  <IconBtn title="Cambiar estado" onClick={() => setOpenStatusModal(true)} color="var(--color-primary)" hoverBg="var(--color-primary-light)">
+                    <RefreshCcw size={15} />
+                  </IconBtn>
+                )}
+                {(role === "admin" || (role === "tech" && (isAssignedToMe || ticket.assigned_to === null))) && (
+                  <IconBtn title="Cambiar prioridad" onClick={() => { setNewPriority(ticket.priority); setOpenPriorityModal(true) }} color="var(--color-warning)" hoverBg="var(--color-warning-light)">
+                    <AlertTriangle size={15} />
+                  </IconBtn>
+                )}
+                {(role === "admin" || (role === "tech" && (isAssignedToMe || ticket.assigned_to === null))) && (
+                  <IconBtn title="Asignar técnico" onClick={async () => { await loadTechnicians(); setOpenAssignModal(true) }} color="var(--color-blue)" hoverBg="var(--color-blue-highlight)">
+                    <UserPlus size={15} />
+                  </IconBtn>
+                )}
+                {role === "user" && ticket.status_id === 5 && (
+                  <IconBtn title="Ver solución" onClick={() => setOpenSolutionModal(true)} color="var(--color-success)" hoverBg="var(--color-success-light)">
+                    <ThumbsUp size={15} />
+                  </IconBtn>
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          )}
       </div>
 
       {/* ── 2. Descripción ───────────────────────────────────── */}
@@ -615,7 +624,7 @@ export default function TicketDetailPage() {
           {comments.length === 0
             ? <p className="text-sm" style={{ color: "var(--color-text-faint)" }}>Sin mensajes aún.</p>
             : comments.map(c => (
-              <div key={c.id} className="rounded-lg p-3" style={{ backgroundColor: "var(--color-surface-offset)" }}>
+              <div key={c.id} className="rounded-lg" style={{ padding: "0.75rem", backgroundColor: "var(--color-surface-offset)" }}>
                 <p className="text-sm" style={{ color: "var(--color-text)" }}>{c.content}</p>
                 <p className="mt-1 text-xs" style={{ color: "var(--color-text-faint)" }}>{new Date(c.created_at).toLocaleString("es-ES")}</p>
               </div>
@@ -623,19 +632,31 @@ export default function TicketDetailPage() {
         </div>
         <div style={{ height: "1px", backgroundColor: "var(--color-divider)", marginBottom: "1.5rem" }} />
         <div className="flex justify-end gap-2">
-          <button onClick={() => setOpenSolutionModal(false)} className="rounded-lg px-4 py-2 text-sm font-medium transition" style={{ backgroundColor: "transparent", border: "none", color: "var(--color-text-muted)", cursor: "pointer" }}
+          <button
+            onClick={() => setOpenSolutionModal(false)}
+            className="rounded-lg text-sm font-medium transition"
+            style={{ backgroundColor: "transparent", border: "none", color: "var(--color-text-muted)", cursor: "pointer", padding: "0.5rem 1rem" }}
             onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-surface-offset)")}
-            onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "transparent")}>
+            onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "transparent")}
+          >
             Cancelar
           </button>
-          <button onClick={handleRejectSolution} className="rounded-full px-5 py-2 text-sm font-medium transition" style={{ backgroundColor: "var(--color-error)", color: "#fff", border: "none", cursor: "pointer" }}
+          <button
+            onClick={handleRejectSolution}
+            className="rounded-full text-sm font-medium transition"
+            style={{ backgroundColor: "var(--color-error)", color: "#fff", border: "none", cursor: "pointer", padding: "0.5rem 1.25rem" }}
             onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.opacity = "0.9")}
-            onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.opacity = "1")}>
+            onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.opacity = "1")}
+          >
             Rechazar
           </button>
-          <button onClick={handleAcceptSolution} className="rounded-full px-5 py-2 text-sm font-medium transition" style={{ backgroundColor: "var(--color-success)", color: "#fff", border: "none", cursor: "pointer" }}
+          <button
+            onClick={handleAcceptSolution}
+            className="rounded-full text-sm font-medium transition"
+            style={{ backgroundColor: "var(--color-success)", color: "#fff", border: "none", cursor: "pointer", padding: "0.5rem 1.25rem" }}
             onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.opacity = "0.9")}
-            onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.opacity = "1")}>
+            onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.opacity = "1")}
+          >
             Aceptar solución
           </button>
         </div>

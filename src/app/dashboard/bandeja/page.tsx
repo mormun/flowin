@@ -118,13 +118,8 @@ export default function BandejaPage() {
   )
 
   return (
-    <div
-      style={{
-        width: "100%",
-        padding: "2rem 3rem 2rem 2.5rem",
-        marginTop: "1.5rem",
-      }}
-    >
+    <div style={{ width: "100%", padding: "2rem 3rem 2rem 2.5rem", marginTop: "1.5rem" }}>
+
       {/* Título */}
       <div style={{ marginBottom: "1.25rem" }}>
         <h2 className="text-2xl font-bold" style={{ color: "var(--color-text)" }}>
@@ -136,18 +131,10 @@ export default function BandejaPage() {
       </div>
 
       {/* Filtros */}
-      <div
-        className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center"
-        style={{ marginBottom: "1.25rem" }}
-      >
-        {/* Buscador */}
+      <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center" style={{ marginBottom: "1.25rem" }}>
         <div
           className="flex items-center gap-2 rounded-lg px-3 py-2.5"
-          style={{
-            backgroundColor: "var(--color-surface)",
-            border: "1px solid var(--color-border)",
-            width: "260px",
-          }}
+          style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", width: "260px" }}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-faint)" strokeWidth="2">
             <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
@@ -161,8 +148,6 @@ export default function BandejaPage() {
             onChange={(e) => { setSearch(e.target.value); setCurrentPage(1) }}
           />
         </div>
-
-        {/* Select estado */}
         <select
           className="rounded-lg outline-none"
           style={{
@@ -187,20 +172,12 @@ export default function BandejaPage() {
       {/* Tabla */}
       <div
         className="w-full overflow-x-auto rounded-xl"
-        style={{
-          backgroundColor: "var(--color-surface)",
-          border: "1px solid var(--color-border)",
-          boxShadow: "var(--shadow-sm)",
-        }}
+        style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", boxShadow: "var(--shadow-sm)" }}
       >
         {loading ? (
           <div className="space-y-3 p-6">
             {[1, 2, 3, 4, 5].map((i) => (
-              <div
-                key={i}
-                className="h-10 animate-pulse rounded-lg"
-                style={{ backgroundColor: "var(--color-surface-offset)" }}
-              />
+              <div key={i} className="h-10 animate-pulse rounded-lg" style={{ backgroundColor: "var(--color-surface-offset)" }} />
             ))}
           </div>
         ) : filtered.length === 0 ? (
@@ -228,7 +205,7 @@ export default function BandejaPage() {
                   onClick={() => { setSortBy("id"); setCurrentPage(1) }}
                 >
                   <span className="flex items-center gap-1">
-                    #
+                    ID TICKET
                     {sortBy === "id" && (
                       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
                         <polyline points="6 9 12 15 18 9" />
@@ -250,50 +227,56 @@ export default function BandejaPage() {
                 <tr
                   key={t.id}
                   className="cursor-pointer transition-colors"
-                  style={{
-                    borderBottom: idx < paginated.length - 1 ? "1px solid var(--color-divider)" : "none",
-                  }}
+                  style={{ borderBottom: idx < paginated.length - 1 ? "1px solid var(--color-divider)" : "none" }}
                   onClick={() => router.push(`/dashboard/tickets/${t.id}`)}
                   onMouseEnter={(e) => (e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-surface-offset)"}
                   onMouseLeave={(e) => (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"}
                 >
+                  {/* ID */}
                   <td
                     className="text-base tabular-nums font-medium"
-                    style={{ paddingTop: "0.5rem", paddingBottom: "0.5rem", color: "var(--color-text-faint)", paddingLeft: "2rem", paddingRight: "1rem" }}
+                    style={{ paddingTop: "0.875rem", paddingBottom: "0.875rem", color: "var(--color-text)", paddingLeft: "2rem", paddingRight: "1rem" }}
                   >
                     #{t.id}
                   </td>
-                  <td style={{ paddingTop: "0.5rem", paddingBottom: "0.5rem", paddingRight: "1rem", maxWidth: "200px" }}>
+                  {/* Título */}
+                  <td style={{ paddingTop: "0.875rem", paddingBottom: "0.875rem", paddingRight: "1rem", maxWidth: "200px" }}>
                     <span className="block truncate text-base font-medium" style={{ color: "var(--color-text)" }}>
                       {t.title}
                     </span>
                   </td>
-                  <td className="text-base" style={{ paddingTop: "0.5rem", paddingBottom: "0.5rem", paddingRight: "1rem", color: "var(--color-text-muted)" }}>
+                  {/* Categoría */}
+                  <td className="text-base" style={{ paddingTop: "0.875rem", paddingBottom: "0.875rem", paddingRight: "1rem", color: "var(--color-text)" }}>
                     {t.categories?.name ?? "—"}
                   </td>
-                  <td style={{ paddingTop: "0.5rem", paddingBottom: "0.5rem", paddingRight: "1rem" }}>
+                  {/* Prioridad */}
+                  <td style={{ paddingTop: "0.875rem", paddingBottom: "0.875rem", paddingRight: "1rem" }}>
                     <Badge
                       label={t.priority}
                       styles={PRIORITY_STYLES[t.priority] ?? { bg: "var(--color-bg)", color: "var(--color-text-muted)" }}
                     />
                   </td>
-                  <td style={{ paddingTop: "0.5rem", paddingBottom: "0.5rem", paddingRight: "1rem" }}>
+                  {/* Estado */}
+                  <td style={{ paddingTop: "0.875rem", paddingBottom: "0.875rem", paddingRight: "1rem" }}>
                     <Badge
                       label={t.status?.name ?? "—"}
                       styles={STATUS_STYLES[t.status?.name ?? ""] ?? { bg: "var(--color-bg)", color: "var(--color-text-muted)" }}
                     />
                   </td>
-                  <td className="text-base" style={{ paddingTop: "0.5rem", paddingBottom: "0.5rem", paddingRight: "1rem", color: "var(--color-text-muted)" }}>
+                  {/* Creado por */}
+                  <td className="text-base" style={{ paddingTop: "0.875rem", paddingBottom: "0.875rem", paddingRight: "1rem", color: "var(--color-text)" }}>
                     {t.users_tickets_created_byTousers
                       ? `${t.users_tickets_created_byTousers.name} ${t.users_tickets_created_byTousers.surname}`
                       : "—"}
                   </td>
-                  <td className="text-base" style={{ paddingTop: "0.5rem", paddingBottom: "0.5rem", paddingRight: "1rem", color: "var(--color-text-muted)" }}>
+                  {/* Asignado a */}
+                  <td className="text-base" style={{ paddingTop: "0.875rem", paddingBottom: "0.875rem", paddingRight: "1rem", color: "var(--color-text)" }}>
                     {t.users_tickets_assigned_toTousers
                       ? `${t.users_tickets_assigned_toTousers.name} ${t.users_tickets_assigned_toTousers.surname}`
                       : <span style={{ color: "var(--color-text-faint)", fontStyle: "italic" }}>Sin asignar</span>}
                   </td>
-                  <td className="text-base tabular-nums" style={{ paddingTop: "0.5rem", paddingBottom: "0.5rem", paddingRight: "1rem", color: "var(--color-text-muted)" }}>
+                  {/* Fecha */}
+                  <td className="text-base tabular-nums" style={{ paddingTop: "0.875rem", paddingBottom: "0.875rem", paddingRight: "1rem", color: "var(--color-text)" }}>
                     {new Date(t.created_at).toLocaleDateString("es-ES")}
                   </td>
                 </tr>
@@ -313,11 +296,12 @@ export default function BandejaPage() {
             <button
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               disabled={currentPage === 1}
-              className="rounded-lg px-3 py-1.5 text-sm font-medium transition disabled:opacity-40"
+              className="rounded-lg text-sm font-medium transition disabled:opacity-40"
               style={{
                 backgroundColor: "var(--color-surface)",
                 border: "1px solid var(--color-border)",
                 color: "var(--color-text-muted)",
+                padding: "0.5rem 1rem",
               }}
             >
               ←
@@ -336,11 +320,12 @@ export default function BandejaPage() {
                   <button
                     key={i}
                     onClick={() => setCurrentPage(p as number)}
-                    className="rounded-lg px-3 py-1.5 text-sm font-medium transition"
+                    className="rounded-lg text-sm font-medium transition"
                     style={{
                       backgroundColor: currentPage === p ? "var(--color-primary)" : "var(--color-surface)",
                       border: "1px solid var(--color-border)",
                       color: currentPage === p ? "#fff" : "var(--color-text-muted)",
+                      padding: "0.5rem 1rem",
                     }}
                   >
                     {p}
@@ -350,11 +335,12 @@ export default function BandejaPage() {
             <button
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
-              className="rounded-lg px-3 py-1.5 text-sm font-medium transition disabled:opacity-40"
+              className="rounded-lg text-sm font-medium transition disabled:opacity-40"
               style={{
                 backgroundColor: "var(--color-surface)",
                 border: "1px solid var(--color-border)",
                 color: "var(--color-text-muted)",
+                padding: "0.5rem 1rem",
               }}
             >
               →
