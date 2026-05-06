@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { getUserRole, getUserEmail } from "@/lib/auth-client"
 import {
   Ticket, PlusCircle, User, Inbox, Users, Tag, Settings, LayoutGrid,
-  Clock, CheckCircle, XCircle, AlertCircle, TrendingUp, UserCheck, CalendarClock,
+  Clock, CheckCircle, XCircle, AlertCircle, TrendingUp, UserCheck, CalendarClock, UserX
 } from "lucide-react"
 
 // ── Tipos ────────────────────────────────────────────────────
@@ -53,6 +53,9 @@ const STAT_ICONS: Record<string, React.ReactNode> = {
   "Usuarios activos":       <UserCheck size={22} />,
   "Categorías activas":     <Tag size={22} />,
   "Tickets totales":        <TrendingUp size={22} />,
+  "Total usuarios":        <Users size={22} />,
+  "Usuarios inactivos":    <UserX size={22} />,  // importa UserX de lucide-react
+  "Categorías existentes": <Tag size={22} />,
 }
 
 const STAT_STYLES: Record<string, { gradient: string; iconColor: string; valueColor: string; border: string }> = {
@@ -67,6 +70,9 @@ const STAT_STYLES: Record<string, { gradient: string; iconColor: string; valueCo
   "Usuarios activos":        { gradient: "linear-gradient(135deg, #cffafe, #a5f3fc)", iconColor: "#0891b2", valueColor: "#0e7490", border: "#67e8f9" },
   "Categorías activas":      { gradient: "linear-gradient(135deg, #dbeafe, #bfdbfe)", iconColor: "#2563eb", valueColor: "#1d4ed8", border: "#93c5fd" },
   "Tickets totales":         { gradient: "linear-gradient(135deg, #fef3c7, #fde68a)", iconColor: "#b45309", valueColor: "#92400e", border: "#fcd34d" },
+  "Total usuarios":        { gradient: "linear-gradient(135deg, #ede9fe, #ddd6fe)", iconColor: "#7c3aed", valueColor: "#6d28d9", border: "#c4b5fd" },
+  "Usuarios inactivos":    { gradient: "linear-gradient(135deg, #fee2e2, #fecaca)", iconColor: "#dc2626", valueColor: "#b91c1c", border: "#f87171" },
+  "Categorías existentes": { gradient: "linear-gradient(135deg, #dbeafe, #bfdbfe)", iconColor: "#2563eb", valueColor: "#1d4ed8", border: "#93c5fd" },
 }
 
 // ── Componente tarjeta de estadística ────────────────────────

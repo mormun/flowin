@@ -40,8 +40,8 @@ export async function GET(req: Request) {
 
       return NextResponse.json({
         cards: [
-          { title: "Tickets creados",    value: total },
-          { title: "Tickets abiertos",   value: open },
+          { title: "Tickets creados", value: total },
+          { title: "Tickets abiertos", value: open },
           { title: "Tickets en proceso", value: inProgress },
         ],
       })
@@ -59,17 +59,42 @@ export async function GET(req: Request) {
     }
 
     // ── ROL: admin (placeholder hasta siguiente iteración) ─────
+    // ── ROL: admin ─────────────────────────────────────────────
     if (role === "admin") {
+      const [
+        totalUsers,
+        activeUsers,
+        inactiveUsers,
+        totalTickets,
+        openTickets,
+        closedTickets,
+        totalCategories,
+      ] = await Promise.all([
+        prisma.users.count(),
+        prisma.users.count({ where: { active: true } }),
+        prisma.users.count({ where: { active: false } }),
+        prisma.tickets.count(),
+        prisma.tickets.count({
+          where: { status: { name: { notIn: ["Cerrado", "Cancelado"] } } },
+        }),
+        prisma.tickets.count({
+          where: { status: { name: "Cerrado" } },
+        }),
+        prisma.categories.count(),
+      ])
+
       return NextResponse.json({
         cards: [
-          { title: "Usuarios activos",   value: 0 },
-          { title: "Categorías activas", value: 0 },
-          { title: "Tickets totales",    value: 0 },
+          { title: "Total usuarios", value: totalUsers },
+          { title: "Usuarios activos", value: activeUsers },
+          { title: "Usuarios inactivos", value: inactiveUsers },
+          { title: "Tickets totales", value: totalTickets },
+          { title: "Tickets abiertos", value: openTickets },
+          { title: "Tickets cerrados", value: closedTickets },
+          { title: "Categorías existentes", value: totalCategories },
         ],
       })
     }
-
-    return NextResponse.json({ error: "Rol no válido" }, { status: 400 })
 
   } catch (error) {
     console.error("ERROR DASHBOARD STATS:", error)

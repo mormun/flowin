@@ -128,17 +128,37 @@ export async function GET(req: Request) {
 
     // ── ADMIN ─────────────────────────────────────────────────
     if (role === "admin") {
-      const [usuariosActivos, categoriasActivas, ticketsTotales] = await Promise.all([
+      const [
+        totalUsers,
+        activeUsers,
+        inactiveUsers,
+        totalTickets,
+        openTickets,
+        closedTickets,
+        totalCategories,
+      ] = await Promise.all([
+        prisma.users.count(),
         prisma.users.count({ where: { active: true } }),
-        prisma.categories.count({ where: { active: true } }),
+        prisma.users.count({ where: { active: false } }),
         prisma.tickets.count(),
+        prisma.tickets.count({
+          where: { status: { name: { notIn: ["Cerrado", "Cancelado"] } } },
+        }),
+        prisma.tickets.count({
+          where: { status: { name: "Cerrado" } },
+        }),
+        prisma.categories.count(),
       ])
 
       return NextResponse.json({
         cards: [
-          { title: "Usuarios activos", value: usuariosActivos, type: "number" },
-          { title: "Categorías activas", value: categoriasActivas, type: "number" },
-          { title: "Tickets totales", value: ticketsTotales, type: "number" },
+          { title: "Total usuarios", value: totalUsers },
+          { title: "Usuarios activos", value: activeUsers },
+          { title: "Usuarios inactivos", value: inactiveUsers },
+          { title: "Tickets totales", value: totalTickets },
+          { title: "Tickets abiertos", value: openTickets },
+          { title: "Tickets cerrados", value: closedTickets },
+          { title: "Categorías existentes", value: totalCategories },
         ],
       })
     }
