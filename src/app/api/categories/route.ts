@@ -21,11 +21,20 @@ async function requireAdmin() {
 
 export async function GET(req: Request) {
   try {
-    const auth = await requireAdmin()
-    if ("error" in auth) return auth.error
+    const session = await getServerSession(authOptions)
+
+    if (!session?.user?.role) {
+      return NextResponse.json({ error: "No autenticado" }, { status: 401 })
+    }
 
     const { searchParams } = new URL(req.url)
     const onlyActive = searchParams.get("active") === "true"
+
+    // Listar TODAS las categorías (panel de gestión) → solo admin
+    // Listar solo las activas (formularios) → cualquier autenticado
+    if (!onlyActive && session.user.role !== "admin") {
+      return NextResponse.json({ error: "No autorizado" }, { status: 403 })
+    }
 
     const categories = await prisma.categories.findMany({
       where: onlyActive ? { active: true } : undefined,

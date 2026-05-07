@@ -26,8 +26,12 @@ export async function PATCH(req: Request) {
   try {
     const session = await getServerSession(authOptions)
 
-    if (!session?.user) {
+    if (!session?.user?.role) {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 })
+    }
+
+    if (session.user.role !== "admin") {
+      return NextResponse.json({ error: "No autorizado" }, { status: 403 })
     }
 
     const { id, name, description } = await req.json()

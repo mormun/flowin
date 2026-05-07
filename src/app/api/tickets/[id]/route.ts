@@ -35,6 +35,9 @@ export async function GET(
         closed_at: true,
         assigned_to: true,
         attachments: true,
+        categories: {
+          select: { id: true, name: true, active: true },
+        },
       },
     })
 

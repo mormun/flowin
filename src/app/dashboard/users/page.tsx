@@ -174,9 +174,9 @@ const IconBtn = ({
       cursor: "pointer",
     }}
     onMouseEnter={(e) =>
-      ((e.currentTarget as HTMLElement).style.backgroundColor = danger
-        ? "var(--color-error-light)"
-        : "var(--color-surface-offset)")
+    ((e.currentTarget as HTMLElement).style.backgroundColor = danger
+      ? "var(--color-error-light)"
+      : "var(--color-surface-offset)")
     }
     onMouseLeave={(e) =>
       ((e.currentTarget as HTMLElement).style.backgroundColor = "transparent")
@@ -238,15 +238,32 @@ export default function UsersPage() {
     .filter((u) => roleFilter === "all" || u.role === roleFilter)
 
   const handleCreate = async () => {
-    if (!newName || !newSurname || !newEmail || !newPassword) {
-      toast.warning("Todos los campos son obligatorios"); return
+    const trimmedName = newName.trim()
+    const trimmedSurname = newSurname.trim()
+    const trimmedEmail = newEmail.trim()
+
+    if (!trimmedName || !trimmedSurname || !trimmedEmail) {
+      toast.warning("Nombre, apellido y email son obligatorios"); return
     }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      toast.warning("Formato de email no válido"); return
+    }
+    if (newPassword && newPassword.length < 8) {
+      toast.warning("La contraseña debe tener al menos 8 caracteres"); return
+    }
+
     setCreating(true)
     try {
       const res = await fetch("/api/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newName, surname: newSurname, email: newEmail, role: newRole, password: newPassword }),
+        body: JSON.stringify({
+          name: trimmedName,
+          surname: trimmedSurname,
+          email: trimmedEmail,
+          role: newRole,
+          password: newPassword || undefined,
+        }),
       })
       const data = await res.json()
       if (!res.ok) { toast.error(data.error); return }
@@ -560,14 +577,14 @@ export default function UsersPage() {
           <div className="flex flex-col gap-5">
             <div className="grid grid-cols-2 gap-4">
               <FormField label="Nombre" required>
-                <input style={inputStyle} value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Nombre" />
+                <input style={inputStyle} value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Nombre" maxLength={80} />
               </FormField>
               <FormField label="Apellido" required>
-                <input style={inputStyle} value={newSurname} onChange={(e) => setNewSurname(e.target.value)} placeholder="Apellido" />
+                <input style={inputStyle} value={newSurname} onChange={(e) => setNewSurname(e.target.value)} placeholder="Apellido" maxLength={100} />
               </FormField>
             </div>
             <FormField label="Email" required>
-              <input type="email" style={inputStyle} value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="correo@ejemplo.com" />
+              <input type="email" style={inputStyle} value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="correo@ejemplo.com" maxLength={150} />
             </FormField>
             <FormField label="Rol" required>
               <select style={inputStyle} value={newRole} onChange={(e) => setNewRole(e.target.value)}>
@@ -576,8 +593,22 @@ export default function UsersPage() {
                 <option value="admin">Administrador</option>
               </select>
             </FormField>
-            <FormField label="Contraseña inicial" required>
-              <input type="password" style={inputStyle} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Mínimo 8 caracteres" />
+            <FormField label="Contraseña inicial">
+              <input
+                type="password"
+                style={inputStyle}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Opcional — déjalo vacío si solo usará Google"
+                minLength={8}
+                maxLength={72}
+              />
+              <p
+                className="text-xs mt-1.5"
+                style={{ color: "var(--color-text-muted)" }}
+              >
+                Si se deja vacío, el usuario solo podrá iniciar sesión con Google.
+              </p>
             </FormField>
 
             <div style={{ height: "1px", backgroundColor: "var(--color-divider)" }} />

@@ -1,6 +1,7 @@
 import type { NextAuthOptions } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
-import bcrypt from "bcrypt"
+import GoogleProvider from "next-auth/providers/google"
+import bcrypt from "bcryptjs"
 import { prisma } from "@/lib/prisma"
 
 export const authOptions: NextAuthOptions = {
@@ -9,6 +10,7 @@ export const authOptions: NextAuthOptions = {
   },
   pages: {
     signIn: "/login",
+    error: "/login",
   },
   providers: [
     CredentialsProvider({
@@ -29,8 +31,6 @@ export const authOptions: NextAuthOptions = {
         const ok = await bcrypt.compare(credentials.password, user.password_hash)
         if (!ok) return null
 
-        // Normaliza el rol: si en BBDD hay un valor inesperado o null,
-        // lo tratamos como "user" por seguridad
         const role: "user" | "tech" | "admin" =
           user.role === "admin" || user.role === "tech" ? user.role : "user"
 
@@ -42,15 +42,60 @@ export const authOptions: NextAuthOptions = {
         }
       },
     }),
+
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async signIn({ user, account }) {
+      if (account?.provider === "credentials") {
+        return true
+      }
+
+      if (account?.provider === "google") {
+        if (!user.email) return false
+
+        const dbUser = await prisma.users.findUnique({
+          where: { email: user.email },
+        })
+
+        if (!dbUser) {
+          return "/login?error=NotAuthorized"
+        }
+
+        if (!dbUser.active) {
+          return "/login?error=AccountDisabled"
+        }
+
+        return true
+      }
+
+      return false
+    },
+
+    async jwt({ token, user, account }) {
+      if (account?.provider === "google" && user?.email) {
+        const dbUser = await prisma.users.findUnique({
+          where: { email: user.email },
+        })
+        if (dbUser) {
+          const role: "user" | "tech" | "admin" =
+            dbUser.role === "admin" || dbUser.role === "tech" ? dbUser.role : "user"
+          token.id = String(dbUser.id)
+          token.role = role
+        }
+        return token
+      }
+
       if (user) {
         token.id = user.id
         token.role = user.role
       }
       return token
     },
+
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.id

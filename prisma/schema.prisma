@@ -70,7 +70,7 @@ model users {
   email                              String          @unique @db.VarChar(150)
   role                               String?         @default("user") @db.VarChar(20)
   active                             Boolean?        @default(true)
-  password_hash                      String          @db.VarChar(255)
+  password_hash                      String?          @db.VarChar(255)
   registration_date                  DateTime?       @default(now()) @db.Timestamp(6)
   comments                           comments[]
   notifications                      notifications[]

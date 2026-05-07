@@ -2,6 +2,10 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/auth"
 import { prisma } from "@/lib/prisma"
+import {
+  notifyTicketCreatorOnStatusChange,
+  notifyTechOnAssignment,
+} from "@/lib/notifications"
 
 export async function PATCH(req: Request) {
   try {
@@ -115,6 +119,33 @@ export async function PATCH(req: Request) {
         closed_at: isFinalStatus ? new Date() : resolvedStatusId !== undefined ? null : undefined,
       },
     })
+
+    // ───── Notificaciones ─────
+    const statusChanged =
+      resolvedStatusId !== undefined &&
+      resolvedStatusId !== currentTicket.status_id
+
+    const assignmentChanged =
+      assigned_to !== undefined &&
+      assigned_to !== null &&
+      assigned_to !== currentTicket.assigned_to
+
+    if (statusChanged && currentTicket.created_by) {
+      await notifyTicketCreatorOnStatusChange({
+        ticketId: updated.id,
+        creatorId: currentTicket.created_by,
+        actorId: currentUser.id,
+        newStatusId: resolvedStatusId!,
+      })
+    }
+
+    if (assignmentChanged) {
+      await notifyTechOnAssignment({
+        ticketId: updated.id,
+        techId: assigned_to,
+        actorId: currentUser.id,
+      })
+    }
 
     return NextResponse.json({ success: true, ticket: updated })
   } catch (error) {

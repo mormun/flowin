@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/auth"
 import { prisma } from "@/lib/prisma"
+import { notifyTechsOnNewTicket } from "@/lib/notifications"
 
 export async function GET(req: Request) {
   try {
@@ -108,7 +109,13 @@ export async function POST(req: Request) {
       },
     })
 
+    await notifyTechsOnNewTicket({
+      ticketId: ticket.id,
+      actorId: user.id,
+    })
+
     return NextResponse.json(ticket, { status: 201 })
+
   } catch (error) {
     console.error("ERROR CREATE TICKET:", error)
     return NextResponse.json({ error: "Error al crear ticket" }, { status: 500 })

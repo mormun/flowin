@@ -13,6 +13,7 @@ type Ticket = {
   description: string
   priority: string
   category_id: number
+  categories: { id: number; name: string; active: boolean } | null
   status_id: number
   created_at: string
   updated_at?: string | null
@@ -267,7 +268,6 @@ export default function TicketDetailPage() {
   const [currentUserId, setCurrentUserId] = useState<number | null>(null)
   const [ticket, setTicket] = useState<Ticket | null>(null)
   const [loading, setLoading] = useState(true)
-  const [categories, setCategories] = useState<{ id: number; name: string }[]>([])
   const [newStatus, setNewStatus] = useState<number | null>(null)
   const [openStatusModal, setOpenStatusModal] = useState(false)
   const [newPriority, setNewPriority] = useState("")
@@ -316,10 +316,6 @@ export default function TicketDetailPage() {
       .then(data => setComments(Array.isArray(data) ? data : []))
   }, [id])
 
-  useEffect(() => {
-    fetch("/api/categories?").then(r => r.ok ? r.json() : []).then(setCategories).catch(() => { })
-  }, [])
-
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }) }, [comments])
 
   const loadTechnicians = async () => {
@@ -341,7 +337,12 @@ export default function TicketDetailPage() {
     setComments(Array.isArray(data) ? data : [])
   }
 
-  const getCategoryName = (catId: number) => categories.find(c => c.id === catId)?.name ?? "Categoría desactivada"
+  const getCategoryName = () => {
+    if (!ticket?.categories) return "Sin categoría"
+    return ticket.categories.active
+      ? ticket.categories.name
+      : `${ticket.categories.name} (desactivada)`
+  }
 
   const addSystemComment = async (content: string) => {
     await fetch("/api/tickets/comments", {
@@ -455,7 +456,7 @@ export default function TicketDetailPage() {
               </MetaCol>
               <MetaCol label="Fecha de creación"><DateTimeValue iso={ticket.created_at} /></MetaCol>
               <MetaCol label="Categoría">
-                <span className="text-sm" style={{ color: "var(--color-text)" }}>{getCategoryName(ticket.category_id)}</span>
+                <span className="text-sm" style={{ color: "var(--color-text)" }}>{getCategoryName()}</span>
               </MetaCol>
               <MetaCol label="Estado">
                 <Badge label={STATUS_LABELS[ticket.status_id] ?? "—"} bg={STATUS_STYLES[ticket.status_id]?.bg ?? "var(--color-bg)"} color={STATUS_STYLES[ticket.status_id]?.color ?? "var(--color-text-muted)"} />

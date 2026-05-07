@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation"
 import Link from "next/link"
 import { useSession, signOut } from "next-auth/react"
+import { NotificationsBell } from "./notifications-bell"
 
 const ROUTE_NAMES: Record<string, string> = {
   dashboard: "Inicio",
@@ -121,6 +122,7 @@ export function DashboardHeader({ onMenuToggle }: { onMenuToggle?: () => void })
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        <NotificationsBell />
         <Link
           href="/dashboard/profile"
           style={{
