@@ -1,12 +1,20 @@
 import { NextResponse } from "next/server"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/auth"
 import { prisma } from "@/lib/prisma"
 
-// GET — todos los estados
 export async function GET() {
   try {
+    const session = await getServerSession(authOptions)
+
+    if (!session?.user) {
+      return NextResponse.json({ error: "No autenticado" }, { status: 401 })
+    }
+
     const statuses = await prisma.status.findMany({
       orderBy: { id: "asc" },
     })
+
     return NextResponse.json(statuses)
   } catch (error) {
     console.error("ERROR STATUS GET:", error)
@@ -14,9 +22,14 @@ export async function GET() {
   }
 }
 
-// PATCH — editar nombre y descripción (no se crean ni eliminan estados)
 export async function PATCH(req: Request) {
   try {
+    const session = await getServerSession(authOptions)
+
+    if (!session?.user) {
+      return NextResponse.json({ error: "No autenticado" }, { status: 401 })
+    }
+
     const { id, name, description } = await req.json()
 
     if (!id) {

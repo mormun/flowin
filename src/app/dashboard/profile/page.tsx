@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { toast } from "sonner"
-import { useRouter } from "next/navigation"
+import { useSession } from "next-auth/react"
 import { User, Lock } from "lucide-react"
 
 const baseInputStyle: React.CSSProperties = {
@@ -31,12 +31,13 @@ const disabledInputStyle: React.CSSProperties = {
 }
 
 export default function ProfilePage() {
-  const router = useRouter()
+  const { status } = useSession()
 
   const [name, setName] = useState("")
   const [surname, setSurname] = useState("")
   const [email, setEmail] = useState("")
   const [registrationDate, setRegistrationDate] = useState("")
+  const [loadingProfile, setLoadingProfile] = useState(true)
   const [loadingSave, setLoadingSave] = useState(false)
 
   const [newPassword, setNewPassword] = useState("")
@@ -45,18 +46,25 @@ export default function ProfilePage() {
 
   useEffect(() => {
     const fetchProfile = async () => {
+      if (status === "loading") return
+      if (status !== "authenticated") {
+        setLoadingProfile(false)
+        return
+      }
+
       try {
-        const storedEmail = localStorage.getItem("userEmail")
-        if (!storedEmail) return
+        setLoadingProfile(true)
 
         const res = await fetch("/api/profile", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: storedEmail }),
+          method: "GET",
+          cache: "no-store",
         })
 
         const data = await res.json()
-        if (!res.ok) { console.error(data.error); return }
+        if (!res.ok) {
+          console.error(data.error)
+          return
+        }
 
         setName(data.name || "")
         setSurname(data.surname || "")
@@ -64,27 +72,34 @@ export default function ProfilePage() {
         setRegistrationDate(data.registration_date || "")
       } catch (error) {
         console.error("Error cargando perfil:", error)
+      } finally {
+        setLoadingProfile(false)
       }
     }
 
     fetchProfile()
-  }, [])
+  }, [status])
 
   const handleSave = async () => {
-    if (!name.trim()) { toast.warning("El nombre no puede estar vacío"); return }
+    if (!name.trim()) {
+      toast.warning("El nombre no puede estar vacío")
+      return
+    }
 
     try {
       setLoadingSave(true)
-      const storedEmail = localStorage.getItem("userEmail")
 
       const res = await fetch("/api/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: storedEmail, name, surname }),
+        body: JSON.stringify({ name, surname }),
       })
 
       const data = await res.json()
-      if (!res.ok) { toast.error(data.error || "Error al guardar"); return }
+      if (!res.ok) {
+        toast.error(data.error || "Error al guardar")
+        return
+      }
 
       toast.success("Datos guardados correctamente")
     } catch (error) {
@@ -96,22 +111,33 @@ export default function ProfilePage() {
   }
 
   const handlePasswordUpdate = async () => {
-    if (!newPassword) { toast.warning("Introduce una nueva contraseña"); return }
-    if (newPassword.length < 8) { toast.warning("La contraseña debe tener al menos 8 caracteres"); return }
-    if (newPassword !== confirmPassword) { toast.error("Las contraseñas no coinciden"); return }
+    if (!newPassword) {
+      toast.warning("Introduce una nueva contraseña")
+      return
+    }
+    if (newPassword.length < 8) {
+      toast.warning("La contraseña debe tener al menos 8 caracteres")
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error("Las contraseñas no coinciden")
+      return
+    }
 
     try {
       setLoadingPassword(true)
-      const storedEmail = localStorage.getItem("userEmail")
 
       const res = await fetch("/api/profile/password", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: storedEmail, password: newPassword }),
+        body: JSON.stringify({ password: newPassword }),
       })
 
       const data = await res.json()
-      if (!res.ok) { toast.error(data.error || "Error al actualizar la contraseña"); return }
+      if (!res.ok) {
+        toast.error(data.error || "Error al actualizar la contraseña")
+        return
+      }
 
       toast.success("Contraseña actualizada correctamente")
       setNewPassword("")
@@ -126,8 +152,6 @@ export default function ProfilePage() {
 
   return (
     <div style={{ width: "100%", padding: "2.5rem 4rem 3rem 3.5rem" }}>
-
-      {/* Cabecera */}
       <div style={{ marginBottom: "2rem" }}>
         <h2 className="text-2xl font-bold" style={{ color: "var(--color-text)" }}>
           Mi perfil
@@ -138,8 +162,6 @@ export default function ProfilePage() {
       </div>
 
       <div className="flex flex-col gap-6">
-
-        {/* ── Sección: Datos personales ──────────────────────── */}
         <div
           className="rounded-xl"
           style={{
@@ -149,7 +171,6 @@ export default function ProfilePage() {
             boxShadow: "var(--shadow-sm)",
           }}
         >
-          {/* Título sección */}
           <div className="flex items-center gap-2" style={{ marginBottom: "1.5rem" }}>
             <User size={16} style={{ color: "var(--color-text-muted)" }} />
             <h3 className="text-base font-semibold" style={{ color: "var(--color-text)" }}>
@@ -158,8 +179,6 @@ export default function ProfilePage() {
           </div>
 
           <div className="flex flex-col gap-5">
-
-            {/* Nombre + Apellidos */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="flex flex-col gap-2">
                 <label className="text-sm font-medium" style={{ color: "var(--color-text)" }}>
@@ -190,7 +209,6 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* Email (sólo lectura) */}
             <div className="flex flex-col gap-2">
               <label className="text-sm font-medium" style={{ color: "var(--color-text)" }}>
                 Email
@@ -203,7 +221,6 @@ export default function ProfilePage() {
               />
             </div>
 
-            {/* Fecha de registro */}
             {registrationDate && (
               <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
                 Cuenta registrada el{" "}
@@ -217,14 +234,12 @@ export default function ProfilePage() {
               </p>
             )}
 
-            {/* Separador */}
             <div style={{ height: "1px", backgroundColor: "var(--color-divider)" }} />
 
-            {/* Botón guardar */}
             <div className="flex items-center justify-end">
               <button
                 onClick={handleSave}
-                disabled={loadingSave}
+                disabled={loadingSave || loadingProfile || status === "loading"}
                 className="flex items-center gap-2 rounded-full font-medium transition disabled:opacity-50 whitespace-nowrap"
                 style={{
                   backgroundColor: "var(--color-primary)",
@@ -253,11 +268,9 @@ export default function ProfilePage() {
                 )}
               </button>
             </div>
-
           </div>
         </div>
 
-        {/* ── Sección: Cambiar contraseña ─────────────────────── */}
         <div
           className="rounded-xl"
           style={{
@@ -267,7 +280,6 @@ export default function ProfilePage() {
             boxShadow: "var(--shadow-sm)",
           }}
         >
-          {/* Título sección */}
           <div className="flex items-center gap-2" style={{ marginBottom: "1.5rem" }}>
             <Lock size={16} style={{ color: "var(--color-text-muted)" }} />
             <h3 className="text-base font-semibold" style={{ color: "var(--color-text)" }}>
@@ -276,7 +288,6 @@ export default function ProfilePage() {
           </div>
 
           <div className="flex flex-col gap-5">
-
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="flex flex-col gap-2">
                 <label className="text-sm font-medium" style={{ color: "var(--color-text)" }}>
@@ -325,14 +336,12 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* Separador */}
             <div style={{ height: "1px", backgroundColor: "var(--color-divider)" }} />
 
-            {/* Botón actualizar */}
             <div className="flex items-center justify-end">
               <button
                 onClick={handlePasswordUpdate}
-                disabled={loadingPassword}
+                disabled={loadingPassword || loadingProfile || status === "loading"}
                 className="flex items-center gap-2 rounded-full font-medium transition disabled:opacity-50 whitespace-nowrap"
                 style={{
                   backgroundColor: "var(--color-primary)",
@@ -361,10 +370,8 @@ export default function ProfilePage() {
                 )}
               </button>
             </div>
-
           </div>
         </div>
-
       </div>
     </div>
   )

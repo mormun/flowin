@@ -178,6 +178,10 @@ export default function CategoriesPage() {
     try {
       const res = await fetch("/api/categories")
       const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error || "Error cargando categorías")
+        return
+      }
       setCategories(data)
     } catch {
       toast.error("Error cargando categorías")
@@ -201,7 +205,8 @@ export default function CategoriesPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: newName, description: newDescription }),
       })
-      if (!res.ok) { const data = await res.json(); toast.error(data.error); return }
+      const data = await res.json()
+      if (!res.ok) { toast.error(data.error || "Error al crear categoría"); return }
       toast.success("Categoría creada")
       setNewName(""); setNewDescription(""); setOpenCreateModal(false)
       fetchCategories()
@@ -220,7 +225,8 @@ export default function CategoriesPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, name: editName, description: editDescription }),
       })
-      if (!res.ok) { const data = await res.json(); toast.error(data.error); return }
+      const data = await res.json()
+      if (!res.ok) { toast.error(data.error || "Error al actualizar categoría"); return }
       toast.success("Categoría actualizada")
       setEditingId(null)
       fetchCategories()
@@ -236,7 +242,8 @@ export default function CategoriesPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: category.id, active: !category.active }),
       })
-      if (!res.ok) { const data = await res.json(); toast.error(data.error); return }
+      const data = await res.json()
+      if (!res.ok) { toast.error(data.error || "Error al actualizar categoría"); return }
       toast.success(category.active ? "Categoría desactivada" : "Categoría activada")
       fetchCategories()
     } catch {
@@ -253,7 +260,7 @@ export default function CategoriesPage() {
         body: JSON.stringify({ id: deletingCategory.id }),
       })
       const data = await res.json()
-      if (!res.ok) { toast.error(data.error); return }
+      if (!res.ok) { toast.error(data.error || "Error al eliminar categoría"); return }
       toast.success("Categoría eliminada")
       setOpenDeleteModal(false); setDeletingCategory(null)
       fetchCategories()
@@ -264,8 +271,6 @@ export default function CategoriesPage() {
 
   return (
     <div style={{ width: "100%", padding: "2.5rem 4rem 3rem 3.5rem" }}>
-
-      {/* Cabecera */}
       <div style={{ marginBottom: "2rem" }}>
         <h2 className="text-2xl font-bold" style={{ color: "var(--color-text)" }}>
           Categorías
@@ -275,7 +280,6 @@ export default function CategoriesPage() {
         </p>
       </div>
 
-      {/* Barra: buscador + botón */}
       <div
         className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
         style={{ marginBottom: "1.5rem" }}
@@ -304,7 +308,6 @@ export default function CategoriesPage() {
         </BtnPrimary>
       </div>
 
-      {/* Tabla */}
       <div
         className="w-full overflow-x-auto rounded-xl"
         style={{
@@ -444,7 +447,6 @@ export default function CategoriesPage() {
         )}
       </div>
 
-      {/* ── MODAL CREAR ───────────────────────────────────────── */}
       {openCreateModal && (
         <Modal onClose={() => setOpenCreateModal(false)}>
           <div className="flex items-center justify-between" style={{ marginBottom: "1.75rem" }}>
@@ -492,7 +494,6 @@ export default function CategoriesPage() {
               />
             </div>
 
-            {/* Separador */}
             <div style={{ height: "1px", backgroundColor: "var(--color-divider)" }} />
 
             <div className="flex justify-end gap-2">
@@ -514,7 +515,6 @@ export default function CategoriesPage() {
         </Modal>
       )}
 
-      {/* ── MODAL ELIMINAR ────────────────────────────────────── */}
       {openDeleteModal && deletingCategory && (
         <Modal onClose={() => { setOpenDeleteModal(false); setDeletingCategory(null) }}>
           <div className="flex items-center justify-between" style={{ marginBottom: "1.75rem" }}>

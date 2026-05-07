@@ -2,47 +2,54 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { useEffect, useState } from "react"
+import { useMemo } from "react"
 import { usePathname } from "next/navigation"
-import { getUserRole } from "@/lib/auth-client"
+import { useSession } from "next-auth/react"
 
 type MenuItem = { label: string; href: string; active: boolean }
 
 export function DashboardSidebar({ onClose }: { onClose?: () => void }) {
   const pathname = usePathname()
-  const [menuItems, setMenuItems] = useState<MenuItem[]>([])
+  const { data: session } = useSession()
 
-  useEffect(() => {
-    const role = getUserRole()
+  const role = session?.user?.role ?? ""
+
+  const menuItems = useMemo<MenuItem[]>(() => {
     let items: Omit<MenuItem, "active">[] = []
 
-    if (role === "user") items = [
-      { label: "Inicio", href: "/dashboard" },
-      { label: "Mis tickets", href: "/dashboard/my-tickets" },
-      { label: "Abrir ticket", href: "/dashboard/tickets/new" },
-    ]
+    if (role === "user") {
+      items = [
+        { label: "Inicio", href: "/dashboard" },
+        { label: "Mis tickets", href: "/dashboard/my-tickets" },
+        { label: "Abrir ticket", href: "/dashboard/tickets/new" },
+      ]
+    }
 
-    if (role === "tech") items = [
-      { label: "Inicio", href: "/dashboard" },
-      { label: "Bandeja de tickets", href: "/dashboard/bandeja" },
-      { label: "Tickets", href: "/dashboard/tickets" },
-      { label: "Abrir ticket", href: "/dashboard/tickets/new" },
-    ]
+    if (role === "tech") {
+      items = [
+        { label: "Inicio", href: "/dashboard" },
+        { label: "Bandeja de tickets", href: "/dashboard/bandeja" },
+        { label: "Tickets", href: "/dashboard/tickets" },
+        { label: "Abrir ticket", href: "/dashboard/tickets/new" },
+      ]
+    }
 
-    if (role === "admin") items = [
-      { label: "Inicio", href: "/dashboard" },
-      { label: "Usuarios", href: "/dashboard/users" },
-      { label: "Categorías", href: "/dashboard/categories" },
-      { label: "Estados", href: "/dashboard/status" },
-      { label: "Tickets", href: "/dashboard/tickets" },
-      { label: "Abrir ticket", href: "/dashboard/tickets/new" },
-    ]
+    if (role === "admin") {
+      items = [
+        { label: "Inicio", href: "/dashboard" },
+        { label: "Usuarios", href: "/dashboard/users" },
+        { label: "Categorías", href: "/dashboard/categories" },
+        { label: "Estados", href: "/dashboard/status" },
+        { label: "Tickets", href: "/dashboard/tickets" },
+        { label: "Abrir ticket", href: "/dashboard/tickets/new" },
+      ]
+    }
 
-    setMenuItems(items.map((item) => ({
+    return items.map((item) => ({
       ...item,
       active: pathname === item.href,
-    })))
-  }, [pathname])
+    }))
+  }, [pathname, role])
 
   return (
     <aside
@@ -57,7 +64,6 @@ export function DashboardSidebar({ onClose }: { onClose?: () => void }) {
         padding: "1.5rem 0.75rem",
       }}
     >
-      {/* Logo */}
       <div
         style={{
           padding: "0.75rem 0.5rem 1.5rem",
@@ -77,7 +83,6 @@ export function DashboardSidebar({ onClose }: { onClose?: () => void }) {
           className="h-auto w-auto"
         />
 
-        {/* Botón cerrar — solo móvil */}
         <button
           onClick={onClose}
           className="absolute right-3 top-3 flex md:hidden"
@@ -107,18 +112,21 @@ export function DashboardSidebar({ onClose }: { onClose?: () => void }) {
           </svg>
         </button>
       </div>
-      {/* Label */}
-      <p style={{
-        fontSize: "0.7rem", fontWeight: 600,
-        textTransform: "uppercase", letterSpacing: "0.08em",
-        color: "var(--color-text-faint)",
-        padding: "0 0.75rem",
-        marginBottom: "0.375rem",
-      }}>
+
+      <p
+        style={{
+          fontSize: "0.7rem",
+          fontWeight: 600,
+          textTransform: "uppercase",
+          letterSpacing: "0.08em",
+          color: "var(--color-text-faint)",
+          padding: "0 0.75rem",
+          marginBottom: "0.375rem",
+        }}
+      >
         Navegación
       </p>
 
-      {/* Nav */}
       <nav style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
         {menuItems.map((item) => (
           <Link
@@ -131,11 +139,11 @@ export function DashboardSidebar({ onClose }: { onClose?: () => void }) {
               gap: "8px",
               padding: "0.625rem 0.75rem",
               borderRadius: "var(--radius-md)",
-              fontSize: "1.125rem",        // ← de 0.9rem a ~15px
-              fontWeight: item.active ? 600 : 500, // ← más peso en ambos casos
+              fontSize: "1.125rem",
+              fontWeight: item.active ? 600 : 500,
               color: item.active
                 ? "var(--color-primary-dark)"
-                : "#3d3d3d",                // ← gris oscuro en reposo
+                : "#3d3d3d",
               backgroundColor: item.active
                 ? "var(--color-primary-light)"
                 : "transparent",
@@ -144,15 +152,14 @@ export function DashboardSidebar({ onClose }: { onClose?: () => void }) {
             }}
             onMouseEnter={(e) => {
               if (!item.active) {
-                (e.currentTarget as HTMLElement).style.backgroundColor =
-                  "var(--color-surface-offset)"
-                  ; (e.currentTarget as HTMLElement).style.color = "#1a1917" // ← casi negro al hover
+                ;(e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-surface-offset)"
+                ;(e.currentTarget as HTMLElement).style.color = "#1a1917"
               }
             }}
             onMouseLeave={(e) => {
               if (!item.active) {
-                (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"
-                  ; (e.currentTarget as HTMLElement).style.color = "#3d3d3d"
+                ;(e.currentTarget as HTMLElement).style.backgroundColor = "transparent"
+                ;(e.currentTarget as HTMLElement).style.color = "#3d3d3d"
               }
             }}
           >

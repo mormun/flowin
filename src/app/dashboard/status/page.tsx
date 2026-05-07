@@ -12,15 +12,15 @@ type Status = {
 }
 
 const STATUS_DOT: Record<string, string> = {
-  "Nuevo":       "#006494",
-  "Proceso":     "var(--color-primary)",
-  "Pendiente":   "#854d0e",
-  "Solucionado": "var(--color-success)",
-  "Cancelado":   "var(--color-error)",
-  "Cerrado":     "var(--color-text-faint)",
+  Nuevo: "#006494",
+  Proceso: "var(--color-primary)",
+  Pendiente: "#854d0e",
+  Solucionado: "var(--color-success)",
+  Cancelado: "var(--color-error)",
+  Cerrado: "var(--color-text-faint)",
 }
 
-const inlineInputStyle = {
+const inlineInputStyle: React.CSSProperties = {
   width: "100%",
   padding: "0.375rem 0.625rem",
   borderRadius: "var(--radius-md)",
@@ -32,13 +32,18 @@ const inlineInputStyle = {
 }
 
 const IconBtn = ({
-  icon, onClick, title,
+  icon,
+  onClick,
+  title,
 }: {
-  icon: React.ReactNode; onClick: () => void; title?: string
+  icon: React.ReactNode
+  onClick: () => void
+  title?: string
 }) => (
   <button
     onClick={onClick}
     title={title}
+    aria-label={title}
     className="flex h-8 w-8 items-center justify-center rounded-lg transition"
     style={{ color: "var(--color-text-muted)", backgroundColor: "transparent" }}
     onMouseEnter={(e) =>
@@ -63,6 +68,12 @@ export default function StatusPage() {
     try {
       const res = await fetch("/api/status")
       const data = await res.json()
+
+      if (!res.ok) {
+        toast.error(data?.error ?? "Error cargando estados")
+        return
+      }
+
       setStatuses(data)
     } catch {
       toast.error("Error cargando estados")
@@ -71,17 +82,30 @@ export default function StatusPage() {
     }
   }
 
-  useEffect(() => { fetchStatuses() }, [])
+  useEffect(() => {
+    fetchStatuses()
+  }, [])
 
   const handleEdit = async (id: number) => {
-    if (!editName.trim()) { toast.warning("El nombre es obligatorio"); return }
+    if (!editName.trim()) {
+      toast.warning("El nombre es obligatorio")
+      return
+    }
+
     try {
       const res = await fetch("/api/status", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, name: editName, description: editDescription }),
       })
-      if (!res.ok) { const data = await res.json(); toast.error(data.error); return }
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        toast.error(data?.error ?? "Error al actualizar estado")
+        return
+      }
+
       toast.success("Estado actualizado")
       setEditingId(null)
       fetchStatuses()
@@ -98,7 +122,6 @@ export default function StatusPage() {
         marginTop: "1.5rem",
       }}
     >
-      {/* Título */}
       <div style={{ marginBottom: "1.25rem" }}>
         <h2 className="text-2xl font-bold" style={{ color: "var(--color-text)" }}>
           Estados
@@ -108,17 +131,20 @@ export default function StatusPage() {
         </p>
       </div>
 
-      {/* Aviso */}
       <div
         className="mb-5 flex items-start gap-3 rounded-lg px-4 py-3"
         style={{
-          backgroundColor: "var(--color-warning-light)",
+          backgroundColor: "color-mix(in oklab, var(--color-warning) 10%, var(--color-bg))",
           border: "1px solid color-mix(in oklab, var(--color-warning) 25%, transparent)",
         }}
       >
         <svg
-          width="16" height="16" viewBox="0 0 24 24"
-          fill="none" stroke="var(--color-warning)" strokeWidth="2"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="var(--color-warning)"
+          strokeWidth="2"
           className="mt-0.5 shrink-0"
         >
           <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
@@ -126,12 +152,11 @@ export default function StatusPage() {
           <line x1="12" y1="17" x2="12.01" y2="17" />
         </svg>
         <p className="text-sm" style={{ color: "var(--color-warning)" }}>
-          Modificar el nombre de un estado puede afectar a la lógica interna de la
-          aplicación. Hazlo solo si es estrictamente necesario.
+          Modificar el nombre de un estado puede afectar a la lógica interna de la aplicación.
+          Hazlo solo si es estrictamente necesario.
         </p>
       </div>
 
-      {/* Tabla */}
       <div
         className="w-full overflow-x-auto rounded-xl"
         style={{
@@ -177,10 +202,7 @@ export default function StatusPage() {
                 <tr
                   key={s.id}
                   style={{
-                    borderBottom:
-                      idx < statuses.length - 1
-                        ? "1px solid var(--color-divider)"
-                        : "none",
+                    borderBottom: idx < statuses.length - 1 ? "1px solid var(--color-divider)" : "none",
                   }}
                 >
                   <td

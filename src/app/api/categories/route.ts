@@ -1,9 +1,29 @@
 import { NextResponse } from "next/server"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/auth"
 import { prisma } from "@/lib/prisma"
 
-// GET — categorías con filtro opcional por estado
+export const runtime = "nodejs"
+
+async function requireAdmin() {
+  const session = await getServerSession(authOptions)
+
+  if (!session?.user?.role) {
+    return { error: NextResponse.json({ error: "No autenticado" }, { status: 401 }) }
+  }
+
+  if (session.user.role !== "admin") {
+    return { error: NextResponse.json({ error: "No autorizado" }, { status: 403 }) }
+  }
+
+  return { session }
+}
+
 export async function GET(req: Request) {
   try {
+    const auth = await requireAdmin()
+    if ("error" in auth) return auth.error
+
     const { searchParams } = new URL(req.url)
     const onlyActive = searchParams.get("active") === "true"
 
@@ -19,9 +39,11 @@ export async function GET(req: Request) {
   }
 }
 
-// POST — crear categoría
 export async function POST(req: Request) {
   try {
+    const auth = await requireAdmin()
+    if ("error" in auth) return auth.error
+
     const { name, description } = await req.json()
 
     if (!name) {
@@ -39,9 +61,11 @@ export async function POST(req: Request) {
   }
 }
 
-// PATCH — editar nombre/descripción o activar/desactivar
 export async function PATCH(req: Request) {
   try {
+    const auth = await requireAdmin()
+    if ("error" in auth) return auth.error
+
     const { id, name, description, active } = await req.json()
 
     if (!id) {
@@ -64,16 +88,17 @@ export async function PATCH(req: Request) {
   }
 }
 
-// DELETE — eliminar categoría (solo si no tiene tickets asociados)
 export async function DELETE(req: Request) {
   try {
+    const auth = await requireAdmin()
+    if ("error" in auth) return auth.error
+
     const { id } = await req.json()
 
     if (!id) {
       return NextResponse.json({ error: "ID obligatorio" }, { status: 400 })
     }
 
-    // Comprobar si tiene tickets asociados
     const ticketCount = await prisma.tickets.count({
       where: { category_id: id },
     })

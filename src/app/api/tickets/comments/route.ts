@@ -1,15 +1,22 @@
 import { NextResponse } from "next/server"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/auth"
 import { prisma } from "@/lib/prisma"
 
 export async function POST(req: Request) {
   try {
-    const { ticketId, userEmail, content, is_system } = await req.json()
+    const session = await getServerSession(authOptions)
+
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "No autenticado" }, { status: 401 })
+    }
+
+    const { ticketId, content, is_system } = await req.json()
 
     if (!ticketId || !content?.trim()) {
       return NextResponse.json({ error: "Datos incompletos" }, { status: 400 })
     }
 
-    // Comentario de sistema — no necesita usuario
     if (is_system) {
       const newComment = await prisma.comments.create({
         data: {
@@ -18,16 +25,13 @@ export async function POST(req: Request) {
           is_system: true,
         },
       })
+
       return NextResponse.json(newComment)
     }
 
-    // Comentario normal — requiere usuario
-    if (!userEmail) {
-      return NextResponse.json({ error: "Datos incompletos" }, { status: 400 })
-    }
-
     const user = await prisma.users.findUnique({
-      where: { email: userEmail },
+      where: { email: session.user.email },
+      select: { id: true },
     })
 
     if (!user) {
@@ -44,7 +48,6 @@ export async function POST(req: Request) {
     })
 
     return NextResponse.json(newComment)
-
   } catch (error) {
     console.error("ERROR COMMENT POST:", error)
     return NextResponse.json({ error: "Error creando comentario" }, { status: 500 })

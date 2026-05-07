@@ -1,10 +1,30 @@
 import { NextResponse } from "next/server"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcrypt"
 
-// GET — todos los usuarios
 export async function GET() {
   try {
+    const session = await getServerSession(authOptions)
+
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "No autenticado" }, { status: 401 })
+    }
+
+    const currentUser = await prisma.users.findUnique({
+      where: { email: session.user.email },
+      select: { id: true, role: true },
+    })
+
+    if (!currentUser) {
+      return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 })
+    }
+
+    if (currentUser.role !== "admin") {
+      return NextResponse.json({ error: "No autorizado" }, { status: 403 })
+    }
+
     const users = await prisma.users.findMany({
       select: {
         id: true,
@@ -17,6 +37,7 @@ export async function GET() {
       },
       orderBy: { id: "asc" },
     })
+
     return NextResponse.json(users)
   } catch (error) {
     console.error("ERROR USERS GET:", error)
@@ -24,16 +45,33 @@ export async function GET() {
   }
 }
 
-// POST — crear usuario
 export async function POST(req: Request) {
   try {
+    const session = await getServerSession(authOptions)
+
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "No autenticado" }, { status: 401 })
+    }
+
+    const currentUser = await prisma.users.findUnique({
+      where: { email: session.user.email },
+      select: { id: true, role: true },
+    })
+
+    if (!currentUser) {
+      return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 })
+    }
+
+    if (currentUser.role !== "admin") {
+      return NextResponse.json({ error: "No autorizado" }, { status: 403 })
+    }
+
     const { name, surname, email, role, password } = await req.json()
 
     if (!name || !surname || !email || !role || !password) {
       return NextResponse.json({ error: "Todos los campos son obligatorios" }, { status: 400 })
     }
 
-    // Comprobar si el email ya existe
     const existing = await prisma.users.findUnique({ where: { email } })
     if (existing) {
       return NextResponse.json({ error: "El email ya está registrado" }, { status: 409 })
@@ -52,16 +90,33 @@ export async function POST(req: Request) {
   }
 }
 
-// PATCH — editar, activar/desactivar, reset password
 export async function PATCH(req: Request) {
   try {
+    const session = await getServerSession(authOptions)
+
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "No autenticado" }, { status: 401 })
+    }
+
+    const currentUser = await prisma.users.findUnique({
+      where: { email: session.user.email },
+      select: { id: true, role: true },
+    })
+
+    if (!currentUser) {
+      return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 })
+    }
+
+    if (currentUser.role !== "admin") {
+      return NextResponse.json({ error: "No autorizado" }, { status: 403 })
+    }
+
     const { id, name, surname, email, role, active, resetPassword } = await req.json()
 
     if (!id) {
       return NextResponse.json({ error: "ID obligatorio" }, { status: 400 })
     }
 
-    // Reset de contraseña — genera una aleatoria
     if (resetPassword) {
       const chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$"
       const newPassword = Array.from({ length: 10 }, () =>
@@ -75,11 +130,9 @@ export async function PATCH(req: Request) {
         data: { password_hash },
       })
 
-      // Devolvemos la contraseña generada para mostrársela al admin
       return NextResponse.json({ success: true, generatedPassword: newPassword })
     }
 
-    // Edición de datos
     const user = await prisma.users.update({
       where: { id },
       data: {
@@ -98,22 +151,36 @@ export async function PATCH(req: Request) {
   }
 }
 
-// DELETE — eliminar usuario (solo si no tiene tickets)
 export async function DELETE(req: Request) {
   try {
+    const session = await getServerSession(authOptions)
+
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "No autenticado" }, { status: 401 })
+    }
+
+    const currentUser = await prisma.users.findUnique({
+      where: { email: session.user.email },
+      select: { id: true, role: true },
+    })
+
+    if (!currentUser) {
+      return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 })
+    }
+
+    if (currentUser.role !== "admin") {
+      return NextResponse.json({ error: "No autorizado" }, { status: 403 })
+    }
+
     const { id } = await req.json()
 
     if (!id) {
       return NextResponse.json({ error: "ID obligatorio" }, { status: 400 })
     }
 
-    // Comprobar tickets creados o asignados
     const ticketCount = await prisma.tickets.count({
       where: {
-        OR: [
-          { created_by: id },
-          { assigned_to: id },
-        ],
+        OR: [{ created_by: id }, { assigned_to: id }],
       },
     })
 

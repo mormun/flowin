@@ -1,17 +1,19 @@
 import { NextResponse } from "next/server"
+import { getServerSession } from "next-auth"
 import { prisma } from "@/lib/prisma"
+import { authOptions } from "@/auth"
 
-export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url)
-  const email = searchParams.get("email")
-  const role = searchParams.get("role")
+export async function GET() {
+  const session = await getServerSession(authOptions)
 
-  if (!email || !role)
-    return NextResponse.json({ error: "Faltan parámetros" }, { status: 400 })
+  if (!session?.user?.email || !session?.user?.role) {
+    return NextResponse.json({ error: "No autenticado" }, { status: 401 })
+  }
+
+  const email = session.user.email
+  const role = session.user.role
 
   try {
-
-    // ── USER ──────────────────────────────────────────────────
     if (role === "user") {
       const user = await prisma.users.findUnique({ where: { email } })
       if (!user) return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 })
@@ -20,11 +22,9 @@ export async function GET(req: Request) {
       const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
 
       const [abiertos, abiertosMes, solucionados, cerrados, categorias] = await Promise.all([
-        // Tickets abiertos en total
         prisma.tickets.count({
           where: { created_by: user.id, status: { name: { in: ["Nuevo", "Pendiente", "Proceso"] } } },
         }),
-        // Tickets abiertos en el último mes
         prisma.tickets.count({
           where: {
             created_by: user.id,
@@ -32,15 +32,12 @@ export async function GET(req: Request) {
             created_at: { gte: firstOfMonth },
           },
         }),
-        // Tickets solucionados
         prisma.tickets.count({
           where: { created_by: user.id, status: { name: "Solucionado" } },
         }),
-        // Tickets cerrados
         prisma.tickets.count({
           where: { created_by: user.id, status: { name: "Cerrado" } },
         }),
-        // Categoría más utilizada
         prisma.tickets.groupBy({
           by: ["category_id"],
           where: { created_by: user.id, category_id: { not: null } },
@@ -50,7 +47,6 @@ export async function GET(req: Request) {
         }),
       ])
 
-      // Resolver nombre de la categoría más usada
       let topCategoria = "—"
       if (categorias.length > 0 && categorias[0].category_id) {
         const cat = await prisma.categories.findUnique({
@@ -71,7 +67,6 @@ export async function GET(req: Request) {
       })
     }
 
-    // ── TECH ──────────────────────────────────────────────────
     if (role === "tech") {
       const user = await prisma.users.findUnique({ where: { email } })
       if (!user) return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 })
@@ -80,11 +75,9 @@ export async function GET(req: Request) {
       const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
 
       const [cerradosTotales, cerradosMes, enProceso, categorias] = await Promise.all([
-        // Tickets cerrados en total asignados al técnico
         prisma.tickets.count({
           where: { assigned_to: user.id, status: { name: "Cerrado" } },
         }),
-        // Tickets cerrados en el último mes asignados al técnico
         prisma.tickets.count({
           where: {
             assigned_to: user.id,
@@ -92,11 +85,9 @@ export async function GET(req: Request) {
             closed_at: { gte: firstOfMonth },
           },
         }),
-        // Tickets en proceso asignados al técnico
         prisma.tickets.count({
           where: { assigned_to: user.id, status: { name: "Proceso" } },
         }),
-        // Categoría más asignada al técnico
         prisma.tickets.groupBy({
           by: ["category_id"],
           where: { assigned_to: user.id, category_id: { not: null } },
@@ -106,7 +97,6 @@ export async function GET(req: Request) {
         }),
       ])
 
-      // Resolver nombre de la categoría más asignada
       let topCategoria = "—"
       if (categorias.length > 0 && categorias[0].category_id) {
         const cat = await prisma.categories.findUnique({
@@ -126,7 +116,6 @@ export async function GET(req: Request) {
       })
     }
 
-    // ── ADMIN ─────────────────────────────────────────────────
     if (role === "admin") {
       const [
         totalUsers,
@@ -164,7 +153,6 @@ export async function GET(req: Request) {
     }
 
     return NextResponse.json({ error: "Rol no válido" }, { status: 400 })
-
   } catch (error) {
     console.error("ERROR DASHBOARD STATS:", error)
     return NextResponse.json({ error: "Error interno" }, { status: 500 })

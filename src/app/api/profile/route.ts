@@ -1,12 +1,21 @@
 import { NextResponse } from "next/server"
+import { getServerSession } from "next-auth"
 import { prisma } from "@/lib/prisma"
+import { authOptions } from "@/auth"
 
-export async function POST(req: Request) {
+export async function GET() {
   try {
-    const { email } = await req.json()
+    const session = await getServerSession(authOptions)
+
+    if (!session?.user?.email) {
+      return NextResponse.json(
+        { error: "No autenticado" },
+        { status: 401 }
+      )
+    }
 
     const user = await prisma.users.findUnique({
-      where: { email },
+      where: { email: session.user.email },
     })
 
     if (!user) {
@@ -36,10 +45,19 @@ export async function POST(req: Request) {
 
 export async function PATCH(req: Request) {
   try {
-    const { email, name, surname } = await req.json()
+    const session = await getServerSession(authOptions)
+
+    if (!session?.user?.email) {
+      return NextResponse.json(
+        { error: "No autenticado" },
+        { status: 401 }
+      )
+    }
+
+    const { name, surname } = await req.json()
 
     const updatedUser = await prisma.users.update({
-      where: { email },
+      where: { email: session.user.email },
       data: {
         name,
         surname,

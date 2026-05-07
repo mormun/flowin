@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import { Search, Plus } from "lucide-react"
@@ -11,16 +11,16 @@ type Ticket = {
   title: string
   priority: string
   category_id: number | null
-  categories: { name: string } | null   // ← añadido
+  categories: { name: string } | null
   status_id: number
   created_at: string
 }
 
 const PRIORITY_STYLES: Record<string, { bg: string; color: string }> = {
-  "Crítica": { bg: "var(--color-error-light)", color: "var(--color-error)" },
-  "Alta": { bg: "var(--color-warning-light)", color: "var(--color-warning)" },
-  "Media": { bg: "#fef9c3", color: "#854d0e" },
-  "Baja": { bg: "var(--color-success-light)", color: "var(--color-success)" },
+  Crítica: { bg: "var(--color-error-light)", color: "var(--color-error)" },
+  Alta: { bg: "var(--color-warning-light)", color: "var(--color-warning)" },
+  Media: { bg: "#fef9c3", color: "#854d0e" },
+  Baja: { bg: "var(--color-success-light)", color: "var(--color-success)" },
 }
 
 const STATUS_LABELS: Record<number, string> = {
@@ -49,7 +49,11 @@ const Badge = ({ label, bg, color }: { label: string; bg: string; color: string 
 const SortTh = ({
   label, value, current, onClick, firstCol,
 }: {
-  label: string; value: string; current: string; onClick: () => void; firstCol?: boolean
+  label: string
+  value: string
+  current: string
+  onClick: () => void
+  firstCol?: boolean
 }) => (
   <th
     className="cursor-pointer select-none pr-4 text-left text-sm font-semibold uppercase tracking-wider"
@@ -86,14 +90,17 @@ export default function MyTicketsPage() {
   useEffect(() => {
     const fetchTickets = async () => {
       try {
-        const email = localStorage.getItem("userEmail")
         const res = await fetch("/api/my-tickets", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email }),
         })
+
         const data = await res.json()
-        if (!res.ok) { toast.error("Error cargando tickets"); return }
+
+        if (!res.ok) {
+          toast.error(data?.error ?? "Error cargando tickets")
+          return
+        }
+
         setTickets(data)
       } catch {
         toast.error("Error de conexión")
@@ -101,23 +108,30 @@ export default function MyTicketsPage() {
         setLoading(false)
       }
     }
+
     fetchTickets()
   }, [])
 
-  const filtered = tickets
-    .filter((t) => t.title.toLowerCase().includes(search.toLowerCase()))
-    .filter((t) => {
-      if (statusFilter === "all") return true
-      if (statusFilter === "open") return t.status_id !== 6 && t.status_id !== 2
-      if (statusFilter === "closed") return t.status_id === 6 || t.status_id === 2
-      return true
-    })
-    .sort((a, b) => {
-      if (sortBy === "id") return a.id - b.id
-      if (sortBy === "title") return a.title.localeCompare(b.title)
-      if (sortBy === "priority") return a.priority.localeCompare(b.priority)
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    })
+  const filtered = useMemo(() => {
+    return tickets
+      .filter((t) => t.title.toLowerCase().includes(search.toLowerCase()))
+      .filter((t) => {
+        if (statusFilter === "all") return true
+        if (statusFilter === "open") return t.status_id !== 6 && t.status_id !== 2
+        if (statusFilter === "closed") return t.status_id === 6 || t.status_id === 2
+        return true
+      })
+      .sort((a, b) => {
+        if (sortBy === "id") return a.id - b.id
+        if (sortBy === "title") return a.title.localeCompare(b.title)
+        if (sortBy === "priority") return a.priority.localeCompare(b.priority)
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      })
+  }, [tickets, search, sortBy, statusFilter])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [search, sortBy, statusFilter])
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE)
   const paginated = filtered.slice(
@@ -127,14 +141,11 @@ export default function MyTicketsPage() {
 
   return (
     <div style={{ width: "100%", padding: "2rem 3rem 2rem 2.5rem", marginTop: "1.5rem" }}>
-
-      {/* Título */}
       <div style={{ marginBottom: "1.25rem" }}>
         <h2 className="text-2xl font-bold" style={{ color: "var(--color-text)" }}>Mis tickets</h2>
         <p className="mt-1 text-sm" style={{ color: "var(--color-text-muted)" }}>Historial de tickets creados por ti</p>
       </div>
 
-      {/* Filtros + botón */}
       <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between" style={{ marginBottom: "1.25rem" }}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <div
@@ -148,7 +159,7 @@ export default function MyTicketsPage() {
               className="flex-1 bg-transparent outline-none ring-0 border-0"
               style={{ color: "var(--color-text)", fontSize: "0.9375rem" }}
               value={search}
-              onChange={(e) => { setSearch(e.target.value); setCurrentPage(1) }}
+              onChange={(e) => setSearch(e.target.value)}
             />
           </div>
           <select
@@ -162,7 +173,7 @@ export default function MyTicketsPage() {
               width: "200px",
             }}
             value={statusFilter}
-            onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1) }}
+            onChange={(e) => setStatusFilter(e.target.value)}
           >
             <option value="all">Todos los estados</option>
             <option value="open">Activos</option>
@@ -180,7 +191,6 @@ export default function MyTicketsPage() {
         </Link>
       </div>
 
-      {/* Tabla */}
       <div
         className="w-full overflow-x-auto rounded-xl"
         style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", boxShadow: "var(--shadow-sm)" }}
@@ -197,7 +207,7 @@ export default function MyTicketsPage() {
               <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
               <polyline points="14 2 14 8 20 8" />
             </svg>
-            <p className="text-base font-medium mb-3" style={{ color: "var(--color-text-muted)" }}>Aún no tienes tickets</p>
+            <p className="mb-3 text-base font-medium" style={{ color: "var(--color-text-muted)" }}>Aún no tienes tickets</p>
             <Link
               href="/dashboard/tickets/new"
               className="flex items-center gap-1.5 rounded-full text-sm font-medium transition"
@@ -210,23 +220,22 @@ export default function MyTicketsPage() {
           <table className="w-full">
             <thead>
               <tr style={{ borderBottom: "1px solid var(--color-border)" }}>
-                {/* ← Título cambiado a "ID TICKET" */}
-                <SortTh label="ID Ticket" value="id" current={sortBy} firstCol onClick={() => { setSortBy("id"); setCurrentPage(1) }} />
-                <SortTh label="Título" value="title" current={sortBy} onClick={() => { setSortBy("title"); setCurrentPage(1) }} />
+                <SortTh label="ID Ticket" value="id" current={sortBy} firstCol onClick={() => setSortBy("id")} />
+                <SortTh label="Título" value="title" current={sortBy} onClick={() => setSortBy("title")} />
                 <th
                   className="pr-4 text-left text-sm font-semibold uppercase tracking-wider"
                   style={{ color: "var(--color-text-muted)", paddingTop: "1rem", paddingBottom: "1rem" }}
                 >
                   Categoría
                 </th>
-                <SortTh label="Prioridad" value="priority" current={sortBy} onClick={() => { setSortBy("priority"); setCurrentPage(1) }} />
+                <SortTh label="Prioridad" value="priority" current={sortBy} onClick={() => setSortBy("priority")} />
                 <th
                   className="pr-4 text-left text-sm font-semibold uppercase tracking-wider"
                   style={{ color: "var(--color-text-muted)", paddingTop: "1rem", paddingBottom: "1rem" }}
                 >
                   Estado
                 </th>
-                <SortTh label="Fecha" value="date" current={sortBy} onClick={() => { setSortBy("date"); setCurrentPage(1) }} />
+                <SortTh label="Fecha" value="date" current={sortBy} onClick={() => setSortBy("date")} />
               </tr>
             </thead>
             <tbody>
@@ -250,7 +259,6 @@ export default function MyTicketsPage() {
                       {t.title}
                     </span>
                   </td>
-                  {/* ← Ahora muestra el nombre de la categoría */}
                   <td className="text-base" style={{ paddingTop: "0.5rem", paddingBottom: "0.5rem", paddingRight: "1rem", color: "var(--color-text)" }}>
                     {t.categories?.name ?? "—"}
                   </td>
@@ -278,7 +286,6 @@ export default function MyTicketsPage() {
         )}
       </div>
 
-      {/* Paginación */}
       {totalPages > 1 && (
         <div className="mt-5 flex items-center justify-between">
           <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>

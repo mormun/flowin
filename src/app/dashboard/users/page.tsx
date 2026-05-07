@@ -56,7 +56,7 @@ const Modal = ({ children, onClose }: { children: React.ReactNode; onClose: () =
         backgroundColor: "var(--color-surface)",
         border: "1px solid var(--color-border)",
         boxShadow: "var(--shadow-lg)",
-        padding: "2rem 2.5rem 2.5rem 2.5rem",  // ← padding generoso
+        padding: "2rem 2.5rem 2.5rem 2.5rem",
       }}
     >
       {children}
@@ -69,7 +69,7 @@ const FormField = ({
 }: {
   label: string; required?: boolean; children: React.ReactNode
 }) => (
-  <div className="flex flex-col gap-2">  {/* ← gap más amplio */}
+  <div className="flex flex-col gap-2">
     <label className="text-sm font-medium" style={{ color: "var(--color-text)" }}>
       {label}
       {required && <span style={{ color: "var(--color-error)" }}> *</span>}
@@ -80,7 +80,7 @@ const FormField = ({
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
-  padding: "0.625rem 0.875rem",   // ← más padding para inputs en modal
+  padding: "0.625rem 0.875rem",
   borderRadius: "var(--radius-md)",
   border: "1px solid var(--color-border)",
   backgroundColor: "var(--color-bg)",
@@ -217,6 +217,10 @@ export default function UsersPage() {
     try {
       const res = await fetch("/api/users")
       const data = await res.json()
+      if (!res.ok) {
+        toast.error(data?.error ?? "Error cargando usuarios")
+        return
+      }
       setUsers(data)
     } catch {
       toast.error("Error cargando usuarios")
@@ -284,7 +288,8 @@ export default function UsersPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: user.id, active: !user.active }),
       })
-      if (!res.ok) { const data = await res.json(); toast.error(data.error); return }
+      const data = await res.json()
+      if (!res.ok) { toast.error(data.error ?? "Error al actualizar usuario"); return }
       toast.success(user.active ? "Usuario desactivado" : "Usuario activado")
       fetchUsers()
     } catch {
@@ -328,8 +333,6 @@ export default function UsersPage() {
 
   return (
     <div style={{ width: "100%", padding: "2.5rem 4rem 3rem 3.5rem" }}>
-
-      {/* Cabecera */}
       <div style={{ marginBottom: "2rem" }}>
         <h2 className="text-2xl font-bold" style={{ color: "var(--color-text)" }}>
           Usuarios
@@ -339,7 +342,6 @@ export default function UsersPage() {
         </p>
       </div>
 
-      {/* Barra: buscador + filtro + botón */}
       <div
         className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
         style={{ marginBottom: "1.5rem" }}
@@ -389,7 +391,6 @@ export default function UsersPage() {
         </BtnPrimary>
       </div>
 
-      {/* Tabla */}
       <div
         className="w-full overflow-x-auto rounded-xl"
         style={{
@@ -542,10 +543,8 @@ export default function UsersPage() {
         )}
       </div>
 
-      {/* ── MODAL CREAR ───────────────────────────────────────── */}
       {openCreateModal && (
         <Modal onClose={() => setOpenCreateModal(false)}>
-          {/* Cabecera modal */}
           <div className="flex items-center justify-between" style={{ marginBottom: "1.75rem" }}>
             <div>
               <h3 className="text-lg font-semibold" style={{ color: "var(--color-text)" }}>
@@ -581,7 +580,6 @@ export default function UsersPage() {
               <input type="password" style={inputStyle} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Mínimo 8 caracteres" />
             </FormField>
 
-            {/* Separador */}
             <div style={{ height: "1px", backgroundColor: "var(--color-divider)" }} />
 
             <div className="flex justify-end gap-2">
@@ -606,7 +604,6 @@ export default function UsersPage() {
         </Modal>
       )}
 
-      {/* ── MODAL RESET PASSWORD ──────────────────────────────── */}
       {openResetModal && resettingUser && (
         <Modal onClose={() => { setOpenResetModal(false); setResettingUser(null); setGeneratedPassword("") }}>
           <div className="flex items-center justify-between" style={{ marginBottom: "1.75rem" }}>
@@ -668,7 +665,6 @@ export default function UsersPage() {
         </Modal>
       )}
 
-      {/* ── MODAL ELIMINAR ────────────────────────────────────── */}
       {openDeleteModal && deletingUser && (
         <Modal onClose={() => { setOpenDeleteModal(false); setDeletingUser(null) }}>
           <div className="flex items-center justify-between" style={{ marginBottom: "1.75rem" }}>

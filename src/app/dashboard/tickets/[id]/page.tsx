@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { RefreshCcw, AlertTriangle, UserPlus, ThumbsUp, ArrowLeft, Send, Paperclip } from "lucide-react"
 import { Tooltip } from "@/components/ui/tooltip"
-import { getUserRole, getUserId, getUserEmail } from "@/lib/auth-client"
+import { useSession } from "next-auth/react"
 
 type Ticket = {
   id: number
@@ -31,10 +31,10 @@ type Comment = {
 }
 
 const PRIORITY_STYLES: Record<string, { bg: string; color: string }> = {
-  "Crítica": { bg: "var(--color-error-light)", color: "var(--color-error)" },
-  "Alta": { bg: "var(--color-warning-light)", color: "var(--color-warning)" },
-  "Media": { bg: "#fef9c3", color: "#854d0e" },
-  "Baja": { bg: "var(--color-success-light)", color: "var(--color-success)" },
+  Crítica: { bg: "var(--color-error-light)", color: "var(--color-error)" },
+  Alta: { bg: "var(--color-warning-light)", color: "var(--color-warning)" },
+  Media: { bg: "#fef9c3", color: "#854d0e" },
+  Baja: { bg: "var(--color-success-light)", color: "var(--color-success)" },
 }
 
 const STATUS_LABELS: Record<number, string> = {
@@ -256,16 +256,15 @@ const getAllowedStatusTransitions = (currentStatusId: number, isAssignedToMe: bo
   return []
 }
 
-// ── Page ────────────────────────────────────────────────────────
 export default function TicketDetailPage() {
   const params = useParams()
   const router = useRouter()
+  const { data: session } = useSession()
   const id = Array.isArray(params.id) ? params.id[0] : params.id
   const chatEndRef = useRef<HTMLDivElement>(null)
 
   const [role, setRole] = useState<string | null>(null)
   const [currentUserId, setCurrentUserId] = useState<number | null>(null)
-  const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null)
   const [ticket, setTicket] = useState<Ticket | null>(null)
   const [loading, setLoading] = useState(true)
   const [categories, setCategories] = useState<{ id: number; name: string }[]>([])
@@ -281,22 +280,28 @@ export default function TicketDetailPage() {
   const [newComment, setNewComment] = useState("")
 
   useEffect(() => {
-    const r = getUserRole(); const uid = getUserId(); const email = getUserEmail()
-    setRole(r); setCurrentUserId(uid); setCurrentUserEmail(email)
-  }, [])
+    const user = session?.user as any
+    setRole(user?.role ?? null)
+    setCurrentUserId(user?.id ? Number(user.id) : null)
+  }, [session])
 
-  // ── Carga del ticket
   useEffect(() => {
     if (!id) return
     const loadTicket = async () => {
       try {
         const res = await fetch(`/api/tickets/${id}`)
-        if (!res.ok) { setLoading(false); return }
+        if (!res.ok) {
+          const data = await res.json().catch(() => null)
+          toast.error(data?.error ?? "Error cargando ticket")
+          setLoading(false)
+          return
+        }
         const data = await res.json()
         setTicket(data)
         setNewStatus(data.status_id)
       } catch (e) {
         console.error("Error cargando ticket:", e)
+        toast.error("Error cargando ticket")
       } finally {
         setLoading(false)
       }
@@ -304,7 +309,6 @@ export default function TicketDetailPage() {
     loadTicket()
   }, [id])
 
-  // ── Carga de comentarios
   useEffect(() => {
     if (!id) return
     fetch(`/api/tickets/comments/${id}`)
@@ -318,8 +322,17 @@ export default function TicketDetailPage() {
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }) }, [comments])
 
-  const loadTechnicians = async () => { const res = await fetch("/api/users/tech"); setTechnicians(await res.json()) }
-  const patch = (body: object) => fetch("/api/tickets/update", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: ticket!.id, ...body }) })
+  const loadTechnicians = async () => {
+    const res = await fetch("/api/users/tech")
+    setTechnicians(await res.json())
+  }
+
+  const patch = (body: object) =>
+    fetch("/api/tickets/update", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: ticket!.id, ...body }),
+    })
 
   const refreshComments = async () => {
     const res = await fetch(`/api/tickets/comments/${id}`)
@@ -363,7 +376,6 @@ export default function TicketDetailPage() {
     await patch({ assigned_to: selectedTech })
     const assignedUser = technicians.find(t => t.id === selectedTech)
 
-    // Refrescar ticket completo desde la API
     const res = await fetch(`/api/tickets/${id}`)
     if (res.ok) {
       const updated = await res.json()
@@ -379,7 +391,7 @@ export default function TicketDetailPage() {
 
   const handleAddComment = async () => {
     if (!newComment.trim()) return
-    const userEmail = localStorage.getItem("userEmail")
+    const userEmail = session?.user?.email
     await fetch("/api/tickets/comments", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -420,8 +432,6 @@ export default function TicketDetailPage() {
 
   return (
     <div style={{ width: "100%", padding: "0 3rem 2rem 2.5rem" }}>
-
-      {/* ── Botón Volver ─────────────────────────────────────── */}
       <div className="flex items-center" style={{ marginBottom: "1.25rem" }}>
         <button
           onClick={() => router.back()}
@@ -435,9 +445,7 @@ export default function TicketDetailPage() {
         </button>
       </div>
 
-      {/* ── 1. Fila superior: Detalles + Acciones ────────────── */}
       <div className="flex items-stretch gap-5" style={{ marginBottom: "1.25rem" }}>
-
         <div className="flex flex-col flex-1">
           <p style={sectionLabelStyle}>Detalles del ticket</p>
           <div className="rounded-xl flex-1" style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", boxShadow: "var(--shadow-sm)", padding: "1.25rem 1.75rem" }}>
@@ -496,7 +504,6 @@ export default function TicketDetailPage() {
           )}
       </div>
 
-      {/* ── 2. Descripción ───────────────────────────────────── */}
       <div style={{ marginBottom: "1.25rem" }}>
         <p style={sectionLabelStyle}>Descripción del ticket</p>
         <div className="rounded-xl" style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", boxShadow: "var(--shadow-sm)", padding: "2rem" }}>
@@ -505,7 +512,6 @@ export default function TicketDetailPage() {
         </div>
       </div>
 
-      {/* ── 2b. Archivo adjunto ─────────────────────────────── */}
       {ticket.attachments && ticket.attachments.length > 0 && (
         <div style={{ marginBottom: "1.25rem" }}>
           <p style={sectionLabelStyle}>Archivo adjunto</p>
@@ -548,7 +554,6 @@ export default function TicketDetailPage() {
         </div>
       )}
 
-      {/* ── 3. Seguimiento ──────────────────────────────────── */}
       <div style={{ marginBottom: "1.25rem" }}>
         <div style={{ marginBottom: "0.625rem", paddingLeft: "0.25rem" }}>
           <span style={sectionLabelStyle}>Seguimiento del ticket</span>
@@ -589,8 +594,6 @@ export default function TicketDetailPage() {
           </div>
         </div>
       </div>
-
-      {/* ── Modales ──────────────────────────────────────────── */}
 
       <Modal open={openStatusModal} onClose={() => setOpenStatusModal(false)} title="Cambiar estado" subtitle="Selecciona el nuevo estado del ticket">
         <ModalSelect value={newStatus ?? ""} onChange={(v) => setNewStatus(Number(v))}>
@@ -661,7 +664,6 @@ export default function TicketDetailPage() {
           </button>
         </div>
       </Modal>
-
     </div>
   )
 }

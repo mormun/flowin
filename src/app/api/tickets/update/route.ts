@@ -1,28 +1,95 @@
 import { NextResponse } from "next/server"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/auth"
 import { prisma } from "@/lib/prisma"
 
 export async function PATCH(req: Request) {
   try {
-    const { id, status_id, assigned_to } = await req.json()
+    const session = await getServerSession(authOptions)
+
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "No autenticado" }, { status: 401 })
+    }
+
+    const currentUser = await prisma.users.findUnique({
+      where: { email: session.user.email },
+      select: { id: true, role: true },
+    })
+
+    if (!currentUser) {
+      return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 })
+    }
+
+    const { id, status_id, assigned_to, priority } = await req.json()
+
+    if (!id) {
+      return NextResponse.json({ error: "ID obligatorio" }, { status: 400 })
+    }
+
+    const currentTicket = await prisma.tickets.findUnique({
+      where: { id },
+      select: { id: true, status_id: true, assigned_to: true, created_by: true },
+    })
+
+    if (!currentTicket) {
+      return NextResponse.json({ error: "Ticket no encontrado" }, { status: 404 })
+    }
 
     const [procesoStatus, cerradoStatus, canceladoStatus, solucionadoStatus] = await Promise.all([
       prisma.status.findFirst({ where: { name: "Proceso" } }),
       prisma.status.findFirst({ where: { name: "Cerrado" } }),
       prisma.status.findFirst({ where: { name: "Cancelado" } }),
-      prisma.status.findFirst({ where: { name: "Solucionado" } }),  // ← nuevo
+      prisma.status.findFirst({ where: { name: "Solucionado" } }),
     ])
+
+    const isAdmin = currentUser.role === "admin"
+    const isTech = currentUser.role === "tech"
+    const isUser = currentUser.role === "user"
+    const isAssignedToMe = currentTicket.assigned_to === currentUser.id
+    const isOwner = currentTicket.created_by === currentUser.id
+
+    if (assigned_to !== undefined) {
+      if (!isAdmin && !(isTech && (isAssignedToMe || currentTicket.assigned_to === null))) {
+        return NextResponse.json({ error: "No autorizado para asignar este ticket" }, { status: 403 })
+      }
+    }
+
+    if (priority !== undefined) {
+      if (!isAdmin && !(isTech && (isAssignedToMe || currentTicket.assigned_to === null))) {
+        return NextResponse.json({ error: "No autorizado para cambiar la prioridad" }, { status: 403 })
+      }
+    }
+
+    if (status_id !== undefined) {
+      if (isUser) {
+        const canUserChangeStatus =
+          isOwner &&
+          currentTicket.status_id === solucionadoStatus?.id &&
+          (status_id === cerradoStatus?.id || status_id === procesoStatus?.id)
+
+        if (!canUserChangeStatus) {
+          return NextResponse.json({ error: "No autorizado para cambiar el estado" }, { status: 403 })
+        }
+      }
+
+      if (isTech) {
+        const canTechChangeStatus =
+          (currentTicket.status_id === procesoStatus?.id &&
+            (status_id === 4 || (status_id === solucionadoStatus?.id && isAssignedToMe))) ||
+          (currentTicket.status_id === 4 && status_id === procesoStatus?.id)
+
+        if (!canTechChangeStatus && !isAdmin) {
+          return NextResponse.json({ error: "No autorizado para cambiar el estado" }, { status: 403 })
+        }
+      }
+    }
 
     let resolvedStatusId = status_id
 
     if (assigned_to !== undefined && assigned_to !== null) {
-      const currentTicket = await prisma.tickets.findUnique({
-        where: { id },
-        select: { status_id: true },
-      })
-
       const isBlocked =
-        currentTicket?.status_id === cerradoStatus?.id ||
-        currentTicket?.status_id === canceladoStatus?.id
+        currentTicket.status_id === cerradoStatus?.id ||
+        currentTicket.status_id === canceladoStatus?.id
 
       if (isBlocked) {
         return NextResponse.json(
@@ -34,7 +101,6 @@ export async function PATCH(req: Request) {
       resolvedStatusId = procesoStatus?.id ?? status_id
     }
 
-    // ── Determinar si hay que sellar closed_at ──────────────────
     const isFinalStatus =
       resolvedStatusId === cerradoStatus?.id ||
       resolvedStatusId === solucionadoStatus?.id
@@ -42,15 +108,15 @@ export async function PATCH(req: Request) {
     const updated = await prisma.tickets.update({
       where: { id },
       data: {
-        status_id: resolvedStatusId,
-        assigned_to,
+        ...(resolvedStatusId !== undefined && { status_id: resolvedStatusId }),
+        ...(assigned_to !== undefined && { assigned_to }),
+        ...(priority !== undefined && { priority }),
         updated_at: new Date(),
-        closed_at: isFinalStatus ? new Date() : undefined,  // ← nuevo
+        closed_at: isFinalStatus ? new Date() : resolvedStatusId !== undefined ? null : undefined,
       },
     })
 
     return NextResponse.json({ success: true, ticket: updated })
-
   } catch (error) {
     console.error("ERROR UPDATE TICKET:", error)
     return NextResponse.json(
