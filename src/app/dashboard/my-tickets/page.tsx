@@ -6,6 +6,17 @@ import { useRouter } from "next/navigation"
 import { Search, Plus } from "lucide-react"
 import Link from "next/link"
 
+// Hook para pausar polling cuando la pestaña no está visible
+function useDocumentVisible() {
+  const [visible, setVisible] = useState(true)
+  useEffect(() => {
+    const handleChange = () => setVisible(!document.hidden)
+    document.addEventListener('visibilitychange', handleChange)
+    return () => document.removeEventListener('visibilitychange', handleChange)
+  }, [])
+  return visible
+}
+
 type Ticket = {
   id: number
   title: string
@@ -24,8 +35,8 @@ const PRIORITY_STYLES: Record<string, { bg: string; color: string }> = {
 }
 
 const STATUS_LABELS: Record<number, string> = {
-  1: "Nuevo", 2: "Cancelado", 3: "Proceso",
-  4: "Pendiente", 5: "Solucionado", 6: "Cerrado",
+  1: "Nuevo", 2: "En Proceso", 3: "Pendiente",
+  4: "Solucionado", 5: "Cerrado", 6: "Cancelado",
 }
 
 const STATUS_STYLES: Record<number, { bg: string; color: string }> = {
@@ -86,21 +97,17 @@ export default function MyTicketsPage() {
   const [statusFilter, setStatusFilter] = useState("all")
   const [currentPage, setCurrentPage] = useState(1)
   const router = useRouter()
+  const isVisible = useDocumentVisible()
 
   useEffect(() => {
     const fetchTickets = async () => {
       try {
-        const res = await fetch("/api/my-tickets", {
-          method: "POST",
-        })
-
+        const res = await fetch("/api/my-tickets", { method: "POST" })
         const data = await res.json()
-
         if (!res.ok) {
           toast.error(data?.error ?? "Error cargando tickets")
           return
         }
-
         setTickets(data)
       } catch {
         toast.error("Error de conexión")
@@ -110,7 +117,16 @@ export default function MyTicketsPage() {
     }
 
     fetchTickets()
-  }, [])
+
+    // Auto-refresh cada 20s si la pestaña está visible
+    if (!isVisible) return
+    const interval = setInterval(() => {
+      if (document.hidden) return
+      fetchTickets()
+    }, 20000)
+
+    return () => clearInterval(interval)
+  }, [isVisible])
 
   const filtered = useMemo(() => {
     return tickets

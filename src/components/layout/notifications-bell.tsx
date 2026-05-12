@@ -77,7 +77,7 @@ export function NotificationsBell() {
       prev.map((n) => (n.id === notif.id ? { ...n, read: true } : n))
     )
     setUnreadCount((prev) => Math.max(0, prev - 1))
-    fetch(`/api/notifications/${notif.id}`, { method: "PATCH" }).catch(() => {})
+    fetch(`/api/notifications/${notif.id}`, { method: "PATCH" }).catch(() => { })
 
     if (notif.ticket?.id) {
       router.push(`/dashboard/tickets/${notif.ticket.id}`)
@@ -87,7 +87,7 @@ export function NotificationsBell() {
   const handleMarkAllRead = () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
     setUnreadCount(0)
-    fetch("/api/notifications/mark-all-read", { method: "POST" }).catch(() => {})
+    fetch("/api/notifications/mark-all-read", { method: "POST" }).catch(() => { })
   }
 
   const badgeText = unreadCount > 9 ? "9+" : String(unreadCount)
@@ -140,14 +140,13 @@ export function NotificationsBell() {
           </span>
         )}
       </button>
-
       {open && (
         <div
           style={{
-            position: "absolute",
-            top: "calc(100% + 8px)",
-            right: 0,
-            width: "360px",
+            position: "fixed",
+            top: containerRef.current ? containerRef.current.getBoundingClientRect().bottom + 8 : "auto",
+            right: "12px",
+            width: "min(360px, calc(100vw - 24px))",
             maxHeight: "480px",
             backgroundColor: "var(--color-surface)",
             border: "1px solid var(--color-border)",

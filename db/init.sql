@@ -128,12 +128,12 @@ VALUES
 -- STATUS
 INSERT INTO status (name, description)
 VALUES 
-('Nuevo',       'Ticket recién abierto desde formulario'),
-('Cancelado',   'Ticket cancelado antes de ser asignado'),
-('Proceso',     'Ticket asignado a un técnico y en curso'),
-('Pendiente',   'Ticket pausado por causa externa al técnico'),
-('Solucionado', 'Se ha proporcionado una solución al ticket'),
-('Cerrado',     'El usuario ha aceptado la solución');
+('Nuevo',       'Ticket recién creado sin asignación'),
+('En Proceso',  'Ticket asignado y en gestión activa'),
+('Pendiente',   'Ticket en pausa esperando información del usuario o terceros'),
+('Solucionado', 'El técnico ha proporcionado una solución, pendiente de aceptación'),
+('Cerrado',     'El usuario ha aceptado la solución y el ticket queda finalizado'),
+('Cancelado',   'Ticket descartado sin resolución');
 
 -- TICKETS
 INSERT INTO tickets (title, description, category_id, status_id, priority, created_by, assigned_to)

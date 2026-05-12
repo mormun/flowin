@@ -33,6 +33,7 @@ export async function GET(
         created_at: true,
         updated_at: true,
         closed_at: true,
+        created_by: true,
         assigned_to: true,
         attachments: true,
         categories: {

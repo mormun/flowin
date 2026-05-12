@@ -3,9 +3,20 @@
 import { useEffect, useState, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { RefreshCcw, AlertTriangle, UserPlus, ThumbsUp, ArrowLeft, Send, Paperclip } from "lucide-react"
+import { RefreshCcw, AlertTriangle, UserPlus, ThumbsUp, ArrowLeft, Send, Paperclip, X } from "lucide-react"
 import { Tooltip } from "@/components/ui/tooltip"
 import { useSession } from "next-auth/react"
+
+// Hook para pausar polling cuando la pestaña no está visible
+function useDocumentVisible() {
+  const [visible, setVisible] = useState(true)
+  useEffect(() => {
+    const handleChange = () => setVisible(!document.hidden)
+    document.addEventListener('visibilitychange', handleChange)
+    return () => document.removeEventListener('visibilitychange', handleChange)
+  }, [])
+  return visible
+}
 
 type Ticket = {
   id: number
@@ -18,6 +29,7 @@ type Ticket = {
   created_at: string
   updated_at?: string | null
   closed_at?: string | null
+  created_by: number
   assigned_to?: number | null
   assigned_user?: { id: number; name: string; surname: string } | null
   attachments?: { id: number; filename: string | null; file_path: string | null }[]
@@ -39,8 +51,8 @@ const PRIORITY_STYLES: Record<string, { bg: string; color: string }> = {
 }
 
 const STATUS_LABELS: Record<number, string> = {
-  1: "Nuevo", 2: "Cancelado", 3: "Proceso",
-  4: "Pendiente", 5: "Solucionado", 6: "Cerrado",
+  1: "Nuevo", 2: "En Proceso", 3: "Pendiente",
+  4: "Solucionado", 5: "Cerrado", 6: "Cancelado",
 }
 
 const STATUS_STYLES: Record<number, { bg: string; color: string }> = {
@@ -99,104 +111,68 @@ const MetaCol = ({ label, children }: { label: string; children: React.ReactNode
   </div>
 )
 
-const IconBtn = ({
-  onClick, title, children, color, hoverBg,
-}: {
-  onClick: () => void
-  title: string
-  children: React.ReactNode
-  color: string
-  hoverBg: string
-}) => (
-  <Tooltip text={title}>
-    <button
-      onClick={onClick}
-      className="flex items-center justify-center rounded-lg transition"
-      style={{ width: "36px", height: "36px", backgroundColor: "var(--color-surface-offset)", color, border: "1px solid var(--color-border)" }}
-      onMouseEnter={(e) => {
-        const el = e.currentTarget as HTMLElement
-        el.style.backgroundColor = hoverBg
-        el.style.color = color
-        el.style.borderColor = "transparent"
-      }}
-      onMouseLeave={(e) => {
-        const el = e.currentTarget as HTMLElement
-        el.style.backgroundColor = "var(--color-surface-offset)"
-        el.style.color = color
-        el.style.borderColor = "var(--color-border)"
-      }}
-    >
-      {children}
-    </button>
-  </Tooltip>
-)
-
-const Modal = ({
-  open, onClose, title, subtitle, children,
-}: {
-  open: boolean; onClose: () => void; title: string; subtitle?: string; children: React.ReactNode
-}) => {
-  if (!open) return null
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center"
-      style={{ backgroundColor: "oklch(0 0 0 / 0.45)" }}
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
-      <div
-        className="w-full max-w-sm rounded-xl"
-        style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", boxShadow: "var(--shadow-lg)", padding: "2rem 2.5rem 2.5rem 2.5rem" }}
-      >
-        <div style={{ marginBottom: "1.75rem" }}>
-          <h3 className="text-lg font-semibold" style={{ color: "var(--color-text)" }}>{title}</h3>
-          {subtitle && <p className="text-sm mt-0.5" style={{ color: "var(--color-text-muted)" }}>{subtitle}</p>}
+const Modal = ({ open, onClose, title, subtitle, children }: { open: boolean; onClose: () => void; title: string; subtitle?: string; children: React.ReactNode }) =>
+  open ? (
+    <div className="fixed inset-0 flex items-center justify-center z-50" style={{ backgroundColor: "rgba(0,0,0,0.6)" }} onClick={onClose}>
+      <div className="rounded-2xl flex flex-col" style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", boxShadow: "var(--shadow-lg)", padding: "1.75rem 2rem", maxWidth: "440px", width: "90%" }} onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start justify-between" style={{ marginBottom: "0.5rem" }}>
+          <div className="flex flex-col flex-1">
+            <h3 className="text-lg font-bold" style={{ color: "var(--color-text)", marginBottom: "0.25rem" }}>{title}</h3>
+            {subtitle && <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>{subtitle}</p>}
+          </div>
+          <button onClick={onClose} className="rounded-full transition" style={{ width: "28px", height: "28px", display: "flex", alignItems: "center", justifyContent: "center", border: "none", background: "none", color: "var(--color-text-muted)", cursor: "pointer" }} onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-surface-offset)")} onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "transparent")}>
+            <X size={16} />
+          </button>
         </div>
         {children}
       </div>
     </div>
-  )
-}
+  ) : null
 
 const ModalSelect = ({ value, onChange, children }: { value: string | number; onChange: (v: string) => void; children: React.ReactNode }) => (
-  <select
-    value={value}
-    onChange={(e) => onChange(e.target.value)}
-    className="w-full rounded-lg outline-none"
-    style={{ padding: "0.625rem 0.875rem", fontSize: "0.9375rem", backgroundColor: "var(--color-bg)", border: "1px solid var(--color-border)", color: "var(--color-text)", marginBottom: "1.5rem", transition: "border-color 150ms" }}
-  >
+  <select value={value} onChange={(e) => onChange(e.target.value)} className="w-full rounded-lg outline-none" style={{ padding: "0.75rem 1rem", fontSize: "0.9375rem", backgroundColor: "var(--color-bg)", border: "1px solid var(--color-border)", color: "var(--color-text)", marginTop: "1rem" }}>
     {children}
   </select>
 )
 
-const ModalFooter = ({ onClose, onConfirm, confirmLabel = "Guardar" }: { onClose: () => void; onConfirm: () => void; confirmLabel?: string }) => (
-  <>
-    <div style={{ height: "1px", backgroundColor: "var(--color-divider)", marginBottom: "1.5rem" }} />
-    <div className="flex justify-end gap-2">
-      <button
-        onClick={onClose}
-        className="rounded-lg text-sm font-medium transition"
-        style={{ backgroundColor: "transparent", border: "none", color: "var(--color-text-muted)", cursor: "pointer", padding: "0.5rem 1rem" }}
-        onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-surface-offset)")}
-        onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "transparent")}
-      >
-        Cancelar
-      </button>
-      <button
-        onClick={onConfirm}
-        className="rounded-full text-sm font-medium transition"
-        style={{ backgroundColor: "var(--color-primary)", color: "#fff", border: "none", cursor: "pointer", padding: "0.5rem 1.25rem" }}
-        onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-primary-hover)")}
-        onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-primary)")}
-      >
-        {confirmLabel}
-      </button>
-    </div>
-  </>
+const ModalFooter = ({ onClose, onConfirm, confirmLabel }: { onClose: () => void; onConfirm: () => void; confirmLabel: string }) => (
+  <div className="flex justify-end gap-2" style={{ marginTop: "1.5rem" }}>
+    <button onClick={onClose} className="rounded-lg text-sm font-medium transition" style={{ backgroundColor: "transparent", border: "none", color: "var(--color-text-muted)", cursor: "pointer", padding: "0.5rem 1rem" }} onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-surface-offset)")} onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "transparent")}>
+      Cancelar
+    </button>
+    <button onClick={onConfirm} className="rounded-full text-sm font-medium transition" style={{ backgroundColor: "var(--color-primary)", color: "#fff", border: "none", cursor: "pointer", padding: "0.5rem 1.25rem" }} onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.opacity = "0.9")} onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.opacity = "1")}>
+      {confirmLabel}
+    </button>
+  </div>
 )
 
+const IconBtn = ({ title, onClick, color, hoverBg, children }: { title: string; onClick: () => void; color: string; hoverBg: string; children: React.ReactNode }) => {
+  return (
+    <Tooltip text={title}>
+      <button
+        onClick={onClick}
+        className="rounded-full transition flex items-center justify-center"
+        style={{
+          width: "40px",
+          height: "40px",
+          flexShrink: 0,
+          border: `2px solid ${color}`,
+          color,
+          background: "none",
+          cursor: "pointer"
+        }}
+        onMouseEnter={(e) => (e.currentTarget as HTMLElement).style.backgroundColor = hoverBg}
+        onMouseLeave={(e) => (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"}
+      >
+        {children}
+      </button>
+    </Tooltip>
+  )
+}
+
 const BUBBLE = {
-  self: { align: "flex-end" as const, bg: "#01696f", color: "#ffffff", nameColor: "rgba(255,255,255,0.7)", br: "1rem 1rem 0.25rem 1rem" },
-  tech: { align: "flex-start" as const, bg: "#cedcd8", color: "#1c2b2b", nameColor: "#01696f", br: "1rem 1rem 1rem 0.25rem" },
+  self: { align: "flex-end" as const, bg: "var(--color-primary)", color: "#fff", nameColor: "#fff", br: "1rem 1rem 0.25rem 1rem" },
+  tech: { align: "flex-start" as const, bg: "#dae8f7", color: "#1b3a57", nameColor: "#2563eb", br: "1rem 1rem 1rem 0.25rem" },
   admin: { align: "flex-start" as const, bg: "#e7d7c4", color: "#2b1f10", nameColor: "#da7101", br: "1rem 1rem 1rem 0.25rem" },
   user: { align: "flex-start" as const, bg: "#ebebeb", color: "#28251d", nameColor: "#7a7974", br: "1rem 1rem 1rem 0.25rem" },
   system: { align: "center" as const, bg: "#e6e4df", color: "#7a7974", nameColor: "#bab9b4", br: "9999px" },
@@ -247,13 +223,84 @@ function ChatBubble({ comment, isSelf }: { comment: Comment; isSelf: boolean }) 
   )
 }
 
-const getAllowedStatusTransitions = (currentStatusId: number, isAssignedToMe: boolean): { id: number; label: string }[] => {
-  if (currentStatusId === 3) {
-    const t: { id: number; label: string }[] = [{ id: 4, label: "Pendiente" }]
-    if (isAssignedToMe) t.push({ id: 5, label: "Solucionado" })
-    return t
+// ───── Mapa de estados por nombre (evita hardcoded IDs) ─────
+const STATUS_IDS: Record<string, number> = {
+  Nuevo: 1,
+  "En Proceso": 2,
+  Pendiente: 3,
+  Solucionado: 4,
+  Cerrado: 5,
+  Cancelado: 6,
+}
+
+// ───── Transiciones de estado permitidas según la matriz ─────
+function getAvailableTransitions(
+  currentStatusId: number,
+  role: "user" | "tech" | "admin",
+  isCreator: boolean,
+  isAssignedToMe: boolean
+): { id: number; label: string }[] {
+  const NUEVO = STATUS_IDS["Nuevo"]
+  const EN_PROCESO = STATUS_IDS["En Proceso"]
+  const PENDIENTE = STATUS_IDS["Pendiente"]
+  const SOLUCIONADO = STATUS_IDS["Solucionado"]
+  const CERRADO = STATUS_IDS["Cerrado"]
+  const CANCELADO = STATUS_IDS["Cancelado"]
+
+  // Estados finales: ninguna transición
+  if (currentStatusId === CERRADO || currentStatusId === CANCELADO) return []
+
+  // Nuevo
+  if (currentStatusId === NUEVO) {
+    if (role === "user" && isCreator) {
+
+      return [{ id: CANCELADO, label: "Cancelar ticket" }]
+    }
+    if (role === "tech" || role === "admin") {
+      return [{ id: CANCELADO, label: "Cancelar ticket" }]
+    }
+
+    return []
   }
-  if (currentStatusId === 4) return [{ id: 3, label: "Proceso" }]
+
+  // En Proceso
+  if (currentStatusId === EN_PROCESO) {
+    if (role === "user") return []
+    if (role === "tech" && !isAssignedToMe) return []
+    if ((role === "tech" && isAssignedToMe) || role === "admin") {
+      return [
+        { id: PENDIENTE, label: "Pendiente" },
+        { id: SOLUCIONADO, label: "Solucionado" },
+        { id: CANCELADO, label: "Cancelar ticket" },
+      ]
+    }
+    return []
+  }
+
+  // Pendiente
+  if (currentStatusId === PENDIENTE) {
+    if (role === "user") return []
+    if (role === "tech" && !isAssignedToMe) return []
+    if ((role === "tech" && isAssignedToMe) || role === "admin") {
+      return [
+        { id: EN_PROCESO, label: "En Proceso" },
+        { id: CANCELADO, label: "Cancelar ticket" },
+      ]
+    }
+    return []
+  }
+
+  // Solucionado
+  if (currentStatusId === SOLUCIONADO) {
+    if (role === "user" && isCreator) {
+      return [
+        { id: CERRADO, label: "Aceptar solución (cerrar)" },
+        { id: EN_PROCESO, label: "Rechazar (volver a En Proceso)" },
+      ]
+    }
+    return []
+  }
+
   return []
 }
 
@@ -264,7 +311,7 @@ export default function TicketDetailPage() {
   const id = Array.isArray(params.id) ? params.id[0] : params.id
   const chatEndRef = useRef<HTMLDivElement>(null)
 
-  const [role, setRole] = useState<string | null>(null)
+  const [role, setRole] = useState<"user" | "tech" | "admin" | null>(null)
   const [currentUserId, setCurrentUserId] = useState<number | null>(null)
   const [ticket, setTicket] = useState<Ticket | null>(null)
   const [loading, setLoading] = useState(true)
@@ -281,9 +328,12 @@ export default function TicketDetailPage() {
 
   useEffect(() => {
     const user = session?.user as any
-    setRole(user?.role ?? null)
+    const userRole = user?.role as "user" | "tech" | "admin" | undefined
+    setRole(userRole ?? null)
     setCurrentUserId(user?.id ? Number(user.id) : null)
   }, [session])
+
+  const isVisible = useDocumentVisible()
 
   useEffect(() => {
     if (!id) return
@@ -306,15 +356,38 @@ export default function TicketDetailPage() {
         setLoading(false)
       }
     }
+
     loadTicket()
-  }, [id])
+
+    // Auto-refresh cada 20s si visible y NO está editando comentario
+    if (!isVisible) return
+    const interval = setInterval(() => {
+      if (document.hidden || newComment.trim()) return // Pausa si está escribiendo
+      loadTicket()
+    }, 20000)
+
+    return () => clearInterval(interval)
+  }, [id, isVisible, newComment])
 
   useEffect(() => {
     if (!id) return
-    fetch(`/api/tickets/comments/${id}`)
-      .then(r => r.ok ? r.json() : [])
-      .then(data => setComments(Array.isArray(data) ? data : []))
-  }, [id])
+    const loadComments = async () => {
+      const res = await fetch(`/api/tickets/comments/${id}`)
+      const data = await res.ok ? await res.json() : []
+      setComments(Array.isArray(data) ? data : [])
+    }
+
+    loadComments()
+
+    // Auto-refresh comentarios cada 20s si visible y NO está editando
+    if (!isVisible) return
+    const interval = setInterval(() => {
+      if (document.hidden || newComment.trim()) return
+      loadComments()
+    }, 20000)
+
+    return () => clearInterval(interval)
+  }, [id, isVisible, newComment])
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }) }, [comments])
 
@@ -393,19 +466,24 @@ export default function TicketDetailPage() {
   const handleAddComment = async () => {
     if (!newComment.trim()) return
     const userEmail = session?.user?.email
-    await fetch("/api/tickets/comments", {
+    const res = await fetch("/api/tickets/comments", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ticketId: ticket?.id, userEmail, content: newComment }),
     })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: "Error desconocido" }))
+      toast.error(err.error ?? "No se pudo añadir el comentario")
+      return
+    }
     await refreshComments()
     setNewComment("")
   }
 
   const handleAcceptSolution = async () => {
     if (!ticket) return
-    await patch({ status_id: 6 })
-    setTicket({ ...ticket, status_id: 6 })
+    await patch({ status_id: STATUS_IDS["Cerrado"] })
+    setTicket({ ...ticket, status_id: STATUS_IDS["Cerrado"] })
     setOpenSolutionModal(false)
     await addSystemComment("Solución aceptada. Ticket cerrado.")
     toast.success("Solución aceptada. Ticket cerrado.")
@@ -413,11 +491,11 @@ export default function TicketDetailPage() {
 
   const handleRejectSolution = async () => {
     if (!ticket) return
-    await patch({ status_id: 3 })
-    setTicket({ ...ticket, status_id: 3 })
+    await patch({ status_id: STATUS_IDS["En Proceso"] })
+    setTicket({ ...ticket, status_id: STATUS_IDS["En Proceso"] })
     setOpenSolutionModal(false)
-    await addSystemComment("Solución rechazada. El ticket vuelve a proceso.")
-    toast.error("Solución rechazada. El ticket vuelve a proceso.")
+    await addSystemComment("Solución rechazada. El ticket vuelve a En Proceso.")
+    toast.error("Solución rechazada. El ticket vuelve a En Proceso.")
   }
 
   if (loading) return (
@@ -426,10 +504,27 @@ export default function TicketDetailPage() {
       <span className="text-sm" style={{ color: "var(--color-text-muted)" }}>Cargando ticket…</span>
     </div>
   )
-  if (!ticket) return null
+  if (!ticket || !role) return null
 
+  const isCreator = ticket.created_by === currentUserId
   const isAssignedToMe = ticket.assigned_to === currentUserId
-  const allowedTransitions = getAllowedStatusTransitions(ticket.status_id, isAssignedToMe)
+  const allowedTransitions = getAvailableTransitions(ticket.status_id, role, isCreator, isAssignedToMe)
+
+  const isFinalStatus = ticket.status_id === STATUS_IDS["Cerrado"] || ticket.status_id === STATUS_IDS["Cancelado"]
+  const isActiveStatus = ticket.status_id === STATUS_IDS["Nuevo"] || ticket.status_id === STATUS_IDS["En Proceso"] || ticket.status_id === STATUS_IDS["Pendiente"]
+
+  // Lógica de visibilidad de botones
+  const showChangeStatusBtn = allowedTransitions.length > 0
+  const showChangePriorityBtn =
+    isActiveStatus &&
+    (role === "admin" || (role === "tech" && (isAssignedToMe || ticket.assigned_to === null)))
+  const showAssignTechBtn =
+    isActiveStatus &&
+    (role === "admin" || (role === "tech" && (isAssignedToMe || ticket.assigned_to === null)))
+
+  const showSolutionBtn = role === "user" && isCreator && ticket.status_id === STATUS_IDS["Solucionado"]
+
+  const showActionsPanel = showChangeStatusBtn || showChangePriorityBtn || showAssignTechBtn || showSolutionBtn
 
   return (
     <div style={{ width: "100%", padding: "0 3rem 2rem 2.5rem" }}>
@@ -475,34 +570,33 @@ export default function TicketDetailPage() {
           </div>
         </div>
 
-        {(role === "admin" || role === "tech" || (role === "user" && ticket.status_id === 5)) &&
-          ticket.status_id !== 6 && ticket.status_id !== 2 && (
-            <div className="flex flex-col" style={{ minWidth: "fit-content" }}>
-              <p style={sectionLabelStyle}>Acciones</p>
-              <div className="rounded-xl flex-1 flex flex-row items-center gap-3" style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", boxShadow: "var(--shadow-sm)", padding: "1.25rem 1.5rem" }}>
-                {(role === "admin" || (role === "tech" && allowedTransitions.length > 0)) && (
-                  <IconBtn title="Cambiar estado" onClick={() => setOpenStatusModal(true)} color="var(--color-primary)" hoverBg="var(--color-primary-light)">
-                    <RefreshCcw size={15} />
-                  </IconBtn>
-                )}
-                {(role === "admin" || (role === "tech" && (isAssignedToMe || ticket.assigned_to === null))) && (
-                  <IconBtn title="Cambiar prioridad" onClick={() => { setNewPriority(ticket.priority); setOpenPriorityModal(true) }} color="var(--color-warning)" hoverBg="var(--color-warning-light)">
-                    <AlertTriangle size={15} />
-                  </IconBtn>
-                )}
-                {(role === "admin" || (role === "tech" && (isAssignedToMe || ticket.assigned_to === null))) && (
-                  <IconBtn title="Asignar técnico" onClick={async () => { await loadTechnicians(); setOpenAssignModal(true) }} color="var(--color-blue)" hoverBg="var(--color-blue-highlight)">
-                    <UserPlus size={15} />
-                  </IconBtn>
-                )}
-                {role === "user" && ticket.status_id === 5 && (
-                  <IconBtn title="Ver solución" onClick={() => setOpenSolutionModal(true)} color="var(--color-success)" hoverBg="var(--color-success-light)">
-                    <ThumbsUp size={15} />
-                  </IconBtn>
-                )}
-              </div>
+        {showActionsPanel && (
+          <div className="flex flex-col" style={{ minWidth: "fit-content" }}>
+            <p style={sectionLabelStyle}>Acciones</p>
+            <div className="rounded-xl flex-1 flex flex-row items-center gap-3" style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", boxShadow: "var(--shadow-sm)", padding: "1.25rem 1.5rem" }}>
+              {showChangeStatusBtn && (
+                <IconBtn title="Cambiar estado" onClick={() => { setNewStatus(null); setOpenStatusModal(true) }} color="var(--color-primary)" hoverBg="var(--color-primary-light)">
+                  <RefreshCcw size={15} />
+                </IconBtn>
+              )}
+              {showChangePriorityBtn && (
+                <IconBtn title="Cambiar prioridad" onClick={() => { setNewPriority(ticket.priority); setOpenPriorityModal(true) }} color="var(--color-warning)" hoverBg="var(--color-warning-light)">
+                  <AlertTriangle size={15} />
+                </IconBtn>
+              )}
+              {showAssignTechBtn && (
+                <IconBtn title="Asignar técnico" onClick={async () => { await loadTechnicians(); setOpenAssignModal(true) }} color="var(--color-blue)" hoverBg="var(--color-blue-highlight)">
+                  <UserPlus size={15} />
+                </IconBtn>
+              )}
+              {showSolutionBtn && (
+                <IconBtn title="Ver solución" onClick={() => setOpenSolutionModal(true)} color="var(--color-success)" hoverBg="var(--color-success-light)">
+                  <ThumbsUp size={15} />
+                </IconBtn>
+              )}
             </div>
-          )}
+          </div>
+        )}
       </div>
 
       <div style={{ marginBottom: "1.25rem" }}>
@@ -575,32 +669,49 @@ export default function TicketDetailPage() {
           <div className="flex items-center gap-3 px-6 py-4" style={{ borderTop: "1px solid var(--color-border)" }}>
             <input
               className="flex-1 rounded-lg outline-none"
-              style={{ padding: "0.625rem 0.875rem", fontSize: "0.9375rem", backgroundColor: "var(--color-bg)", border: newComment ? "1px solid var(--color-primary)" : "1px solid var(--color-border)", color: "var(--color-text)", transition: "border-color 150ms" }}
-              placeholder="Escribe un mensaje…"
+              style={{
+                padding: "0.625rem 0.875rem",
+                fontSize: "0.9375rem",
+                backgroundColor: isFinalStatus ? "var(--color-surface-offset)" : "var(--color-bg)",
+                border: newComment ? "1px solid var(--color-primary)" : "1px solid var(--color-border)",
+                color: isFinalStatus ? "var(--color-text-faint)" : "var(--color-text)",
+                transition: "border-color 150ms",
+                cursor: isFinalStatus ? "not-allowed" : "text",
+              }}
+              placeholder={isFinalStatus ? "No se pueden añadir comentarios en tickets cerrados o cancelados" : "Escribe un mensaje…"}
               value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleAddComment()}
-              onFocus={(e) => (e.currentTarget.style.borderColor = "var(--color-primary)")}
+              onChange={(e) => !isFinalStatus && setNewComment(e.target.value)}
+              onKeyDown={(e) => !isFinalStatus && e.key === "Enter" && !e.shiftKey && handleAddComment()}
+              onFocus={(e) => !isFinalStatus && (e.currentTarget.style.borderColor = "var(--color-primary)")}
               onBlur={(e) => (e.currentTarget.style.borderColor = newComment ? "var(--color-primary)" : "var(--color-border)")}
+              disabled={isFinalStatus}
             />
             <button
               onClick={handleAddComment}
               className="flex items-center justify-center rounded-full transition"
-              style={{ width: "40px", height: "40px", flexShrink: 0, backgroundColor: newComment.trim() ? "var(--color-primary)" : "var(--color-surface-offset)", color: newComment.trim() ? "#fff" : "var(--color-text-faint)", border: "none", cursor: "pointer", transition: "background-color 150ms" }}
-              onMouseEnter={(e) => newComment.trim() && ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-primary-hover)")}
-              onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = newComment.trim() ? "var(--color-primary)" : "var(--color-surface-offset)")}
+              style={{
+                width: "40px",
+                height: "40px",
+                flexShrink: 0,
+                backgroundColor: !isFinalStatus && newComment.trim() ? "var(--color-primary)" : "var(--color-surface-offset)",
+                color: !isFinalStatus && newComment.trim() ? "#fff" : "var(--color-text-faint)",
+                border: "none",
+                cursor: !isFinalStatus && newComment.trim() ? "pointer" : "not-allowed",
+                transition: "background-color 150ms",
+              }}
+              onMouseEnter={(e) => !isFinalStatus && newComment.trim() && ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-primary-hover)")}
+              onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = !isFinalStatus && newComment.trim() ? "var(--color-primary)" : "var(--color-surface-offset)")}
+              disabled={isFinalStatus || !newComment.trim()}
             >
               <Send size={16} />
             </button>
           </div>
         </div>
       </div>
-
       <Modal open={openStatusModal} onClose={() => setOpenStatusModal(false)} title="Cambiar estado" subtitle="Selecciona el nuevo estado del ticket">
-        <ModalSelect value={newStatus ?? ""} onChange={(v) => setNewStatus(Number(v))}>
-          <option value="" disabled>Selecciona estado</option>
-          {role === "tech" && allowedTransitions.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
-          {role === "admin" && (<><option value={1}>Nuevo</option><option value={2}>Cancelado</option><option value={3}>Proceso</option><option value={4}>Pendiente</option><option value={5}>Solucionado</option><option value={6}>Cerrado</option></>)}
+        <ModalSelect value={newStatus === null ? "" : newStatus} onChange={(v) => { setNewStatus(Number(v)) }}>
+          <option value="">Selecciona estado</option>
+          {allowedTransitions.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
         </ModalSelect>
         <ModalFooter onClose={() => setOpenStatusModal(false)} onConfirm={handleUpdate} confirmLabel="Actualizar estado" />
       </Modal>

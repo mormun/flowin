@@ -23,12 +23,12 @@ export async function GET() {
 
       const [abiertos, abiertosMes, solucionados, cerrados, categorias] = await Promise.all([
         prisma.tickets.count({
-          where: { created_by: user.id, status: { name: { in: ["Nuevo", "Pendiente", "Proceso"] } } },
+          where: { created_by: user.id, status: { name: { in: ["Nuevo", "Pendiente", "En Proceso"] } } },
         }),
         prisma.tickets.count({
           where: {
             created_by: user.id,
-            status: { name: { in: ["Nuevo", "Pendiente", "Proceso"] } },
+            status: { name: { in: ["Nuevo", "Pendiente", "En Proceso"] } },
             created_at: { gte: firstOfMonth },
           },
         }),
@@ -86,7 +86,7 @@ export async function GET() {
           },
         }),
         prisma.tickets.count({
-          where: { assigned_to: user.id, status: { name: "Proceso" } },
+          where: { assigned_to: user.id, status: { name: "En Proceso" } },
         }),
         prisma.tickets.groupBy({
           by: ["category_id"],

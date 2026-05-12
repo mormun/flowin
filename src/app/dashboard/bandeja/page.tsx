@@ -4,6 +4,18 @@ import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 
+// Hook para pausar polling cuando la pestaña no está visible
+function useDocumentVisible() {
+  const [visible, setVisible] = useState(true)
+  useEffect(() => {
+    const handleChange = () => setVisible(!document.hidden)
+    document.addEventListener('visibilitychange', handleChange)
+    return () => document.removeEventListener('visibilitychange', handleChange)
+  }, [])
+  return visible
+}
+
+
 type Ticket = {
   id: number
   title: string
@@ -58,17 +70,17 @@ export default function BandejaPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const router = useRouter()
 
+  const isVisible = useDocumentVisible()
+
   useEffect(() => {
     const fetchTickets = async () => {
       try {
         const res = await fetch("/api/tickets?bandeja=true")
         const data = await res.json()
-
         if (!res.ok) {
           toast.error(data?.error ?? "Error cargando tickets")
           return
         }
-
         setTickets(data)
       } catch {
         toast.error("Error cargando tickets")
@@ -78,7 +90,16 @@ export default function BandejaPage() {
     }
 
     fetchTickets()
-  }, [])
+
+    // Auto-refresh cada 20s si la pestaña está visible
+    if (!isVisible) return
+    const interval = setInterval(() => {
+      if (document.hidden) return
+      fetchTickets()
+    }, 20000)
+
+    return () => clearInterval(interval)
+  }, [isVisible])
 
   const filtered = useMemo(() => {
     return tickets
@@ -179,7 +200,7 @@ export default function BandejaPage() {
         >
           <option value="all">Todos los estados</option>
           <option value="Nuevo">Nuevo</option>
-          <option value="Proceso">En proceso</option>
+          <option value="En Proceso">En proceso</option>
           <option value="Pendiente">Pendiente</option>
           <option value="Solucionado">Solucionado</option>
         </select>

@@ -17,6 +17,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Datos incompletos" }, { status: 400 })
     }
 
+    // Comentarios automáticos del sistema: sin restricciones
     if (is_system) {
       const newComment = await prisma.comments.create({
         data: {
@@ -27,6 +28,25 @@ export async function POST(req: Request) {
       })
 
       return NextResponse.json(newComment)
+    }
+
+    // ───── Bloqueo de comentarios en estados finales (Cerrado / Cancelado) ─────
+    const ticket = await prisma.tickets.findUnique({
+      where: { id: Number(ticketId) },
+      select: {
+        status: { select: { name: true } },
+      },
+    })
+
+    if (!ticket) {
+      return NextResponse.json({ error: "Ticket no encontrado" }, { status: 404 })
+    }
+
+    if (ticket.status?.name === "Cerrado" || ticket.status?.name === "Cancelado") {
+      return NextResponse.json(
+        { error: "No se pueden añadir comentarios a un ticket cerrado o cancelado" },
+        { status: 403 }
+      )
     }
 
     const user = await prisma.users.findUnique({

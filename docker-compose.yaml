@@ -13,7 +13,11 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-flowin -d ${POSTGRES_DB:-flowindb}}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-flowin -d ${POSTGRES_DB:-flowindb}}",
+        ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -37,6 +41,9 @@ services:
       - "3000:3000"
     volumes:
       - uploads_data:/app/public/uploads
+      - ./src:/app/src # ← AÑADIR
+      - ./public:/app/public # ← AÑADIR
+      - ./next.config.ts:/app/next.config.ts # ← AÑADIR (opcional)
 
 volumes:
   postgres_data:
