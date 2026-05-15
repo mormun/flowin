@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { prisma } from "@/lib/prisma"
 import { authOptions } from "@/auth"
+import { put } from "@vercel/blob"
 
-const MAX_SIZE = 10 * 1024 * 1024 // 10 MB
+const MAX_SIZE = 4 * 1024 * 1024 // 4 MB (límite Vercel Free)
 
 export async function POST(req: NextRequest) {
   try {
@@ -50,59 +51,28 @@ export async function POST(req: NextRequest) {
 
     if (file.size > MAX_SIZE) {
       return NextResponse.json(
-        { error: "El archivo no puede superar los 10 MB" },
+        { error: "El archivo no puede superar los 4 MB" },
         { status: 413 }
       )
     }
 
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_")
-    const buffer = Buffer.from(await file.arrayBuffer())
 
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-    const projectRef = 'wvzoufjhzltyzvzdqimib'
-    const storagePath = `${ticketId}/${safeName}`
-
-    // Crear FormData para el upload
-    const uploadFormData = new FormData()
-    uploadFormData.append('', new Blob([buffer], { type: file.type }), safeName)
-
-    const uploadResponse = await fetch(
-      `https://${projectRef}.storage.supabase.co/storage/v1/object/attachments/${storagePath}`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${serviceRoleKey}`,
-          'apikey': serviceRoleKey,
-          'x-project-ref': projectRef,
-        },
-        body: formData,
-      }
-    )
-
-    const responseText = await uploadResponse.text()
-    console.log('Upload response:', uploadResponse.status, responseText)
-
-    if (!uploadResponse.ok) {
-      console.error('Error uploading:', uploadResponse.status, responseText)
-      return NextResponse.json(
-        { error: "Error subiendo archivo" },
-        { status: 500 }
-      )
-    }
-
-    const filePath = `https://${projectRef}.supabase.co/storage/v1/object/public/attachments/${storagePath}`
+    // ───── Vercel Blob Storage ─────
+    const blob = await put(`attachments/${ticketId}/${safeName}`, file, {
+      access: 'public',
+    })
 
     // ───── Guardar en BBDD ─────
     const attachment = await prisma.attachments.create({
       data: {
         ticket_id: ticketId,
         filename: safeName,
-        file_path: filePath,
+        file_path: blob.url,
       },
     })
 
     return NextResponse.json(attachment, { status: 201 })
-
   } catch (err) {
     console.error("Error en POST /api/attachments:", err)
     return NextResponse.json({ error: "Error subiendo archivo" }, { status: 500 })
