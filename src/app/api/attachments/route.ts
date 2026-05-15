@@ -58,46 +58,47 @@ export async function POST(req: NextRequest) {
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_")
     const buffer = Buffer.from(await file.arrayBuffer())
 
-    // ───── Supabase Storage mediante API REST directa ─────
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    // ───── Supabase Storage via SDK con dominio storage ─────
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+    const projectRef = 'wvzoufjhzltyzvzdqimib'
+
+    const { createClient } = await import('@supabase/supabase-js')
+    const supabase = createClient(
+      `https://${projectRef}.storage.supabase.co`,
+      serviceRoleKey,
+      {
+        auth: { persistSession: false },
+        global: {
+          headers: {
+            'x-project-ref': projectRef,
+            'apikey': serviceRoleKey,
+          }
+        }
+      }
+    )
 
     const storagePath = `${ticketId}/${safeName}`
 
-    console.log('SUPABASE URL:', supabaseUrl)
-    console.log('FETCH URL:', `${supabaseUrl}/storage/v1/object/attachments/${storagePath}`)
+    const { error } = await supabase.storage
+      .from("attachments")
+      .upload(storagePath, buffer, {
+        contentType: file.type,
+        upsert: false,
+      })
 
-    // Usar el endpoint global de Supabase con el project ref como path
-    const projectRef = 'wvzoufjhzltyzvzdqimib'
-    const storageUrl = `https://${projectRef}.supabase.co/storage/v1/object/attachments/${storagePath}`
-
-    // Pero como ese dominio no resuelve desde Vercel, usar el endpoint global
-    const globalStorageUrl = `https://supabase.co/storage/v1/object/attachments/${storagePath}`
-
-    console.log('FETCH URL:', globalStorageUrl)
-
-    const uploadResponse = await fetch(globalStorageUrl, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${serviceRoleKey}`,
-        'apikey': serviceRoleKey,
-        'Content-Type': file.type,
-        'x-upsert': 'false',
-        'host': `${projectRef}.supabase.co`,
-      },
-      body: buffer,
-    })
-
-    if (!uploadResponse.ok) {
-      const errorText = await uploadResponse.text()
-      console.error('Error uploading to Supabase via REST:', uploadResponse.status, errorText)
+    if (error) {
+      console.error("Error uploading:", JSON.stringify(error))
       return NextResponse.json(
-        { error: `Error subiendo archivo: ${uploadResponse.statusText}` },
+        { error: "Error subiendo archivo a Supabase" },
         { status: 500 }
       )
     }
 
-    const filePath = `${supabaseUrl}/storage/v1/object/public/attachments/${storagePath}`
+    const { data: urlData } = supabase.storage
+      .from("attachments")
+      .getPublicUrl(storagePath)
+
+    const filePath = urlData.publicUrl
 
     // ───── Guardar en BBDD ─────
     const attachment = await prisma.attachments.create({
