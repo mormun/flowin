@@ -58,47 +58,39 @@ export async function POST(req: NextRequest) {
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_")
     const buffer = Buffer.from(await file.arrayBuffer())
 
-    // ───── Supabase Storage via SDK con dominio storage ─────
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
     const projectRef = 'wvzoufjhzltyzvzdqimib'
+    const storagePath = `${ticketId}/${safeName}`
 
-    const { createClient } = await import('@supabase/supabase-js')
-    const supabase = createClient(
-      `https://${projectRef}.storage.supabase.co`,
-      serviceRoleKey,
+    // Crear FormData para el upload
+    const uploadFormData = new FormData()
+    uploadFormData.append('', new Blob([buffer], { type: file.type }), safeName)
+
+    const uploadResponse = await fetch(
+      `https://${projectRef}.storage.supabase.co/storage/v1/object/attachments/${storagePath}`,
       {
-        auth: { persistSession: false },
-        global: {
-          headers: {
-            'x-project-ref': projectRef,
-            'apikey': serviceRoleKey,
-          }
-        }
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${serviceRoleKey}`,
+          'apikey': serviceRoleKey,
+          'x-project-ref': projectRef,
+        },
+        body: formData,
       }
     )
 
-    const storagePath = `${ticketId}/${safeName}`
+    const responseText = await uploadResponse.text()
+    console.log('Upload response:', uploadResponse.status, responseText)
 
-    const { error } = await supabase.storage
-      .from("attachments")
-      .upload(storagePath, buffer, {
-        contentType: file.type,
-        upsert: false,
-      })
-
-    if (error) {
-      console.error("Error uploading:", JSON.stringify(error))
+    if (!uploadResponse.ok) {
+      console.error('Error uploading:', uploadResponse.status, responseText)
       return NextResponse.json(
-        { error: "Error subiendo archivo a Supabase" },
+        { error: "Error subiendo archivo" },
         { status: 500 }
       )
     }
 
-    const { data: urlData } = supabase.storage
-      .from("attachments")
-      .getPublicUrl(storagePath)
-
-    const filePath = urlData.publicUrl
+    const filePath = `https://${projectRef}.supabase.co/storage/v1/object/public/attachments/${storagePath}`
 
     // ───── Guardar en BBDD ─────
     const attachment = await prisma.attachments.create({
