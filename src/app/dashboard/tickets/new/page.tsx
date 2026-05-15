@@ -379,8 +379,8 @@ export default function NewTicketPage() {
                       const selected = e.target.files?.[0]
                       if (!selected) return
 
-                      if (selected.size > 10 * 1024 * 1024) {
-                        toast.error("El archivo no puede superar los 10 MB")
+                      if (selected.size > 4 * 1024 * 1024) {
+                        toast.error("El archivo no puede superar los 4 MB")
                         e.target.value = ""
                         return
                       }
