@@ -36,7 +36,7 @@ export async function GET(
       },
     })
 
-    const normalized = comments.map((comment) => ({
+    const normalized = comments.map((comment: any) => ({
       ...comment,
       user: comment.users ?? undefined,
       users: undefined, // Eliminar del objeto final
