@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { prisma } from "@/lib/prisma"
 import { authOptions } from "@/auth"
-import { writeFile, mkdir } from "fs/promises"
-import path from "path"
 
 const MAX_SIZE = 10 * 1024 * 1024 // 10 MB
 
@@ -60,11 +58,35 @@ export async function POST(req: NextRequest) {
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_")
     const buffer = Buffer.from(await file.arrayBuffer())
 
-    // ───── Almacenamiento local en filesystem ─────
-    const uploadDir = path.join(process.cwd(), "public", "uploads", String(ticketId))
-    await mkdir(uploadDir, { recursive: true })
-    await writeFile(path.join(uploadDir, safeName), buffer)
-    const filePath = `/uploads/${ticketId}/${safeName}`
+    // ───── Supabase Storage ─────
+    const { createClient } = await import('@supabase/supabase-js')
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    )
+
+    const storagePath = `${ticketId}/${safeName}`
+
+    const { error } = await supabase.storage
+      .from("attachments")
+      .upload(storagePath, buffer, {
+        contentType: file.type,
+        upsert: false,
+      })
+
+    if (error) {
+      console.error("Error uploading to Supabase:", error)
+      return NextResponse.json(
+        { error: "Error subiendo archivo a Supabase" },
+        { status: 500 }
+      )
+    }
+
+    const { data: urlData } = supabase.storage
+      .from("attachments")
+      .getPublicUrl(storagePath)
+
+    const filePath = urlData.publicUrl
 
     // ───── Guardar en BBDD ─────
     const attachment = await prisma.attachments.create({
