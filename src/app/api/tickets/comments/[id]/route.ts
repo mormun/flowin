@@ -36,9 +36,10 @@ export async function GET(
       },
     })
 
-    const normalized = comments.map(({ users, ...c }) => ({
-      ...c,
-      user: users ?? undefined,
+    const normalized = comments.map((comment) => ({
+      ...comment,
+      user: comment.users ?? undefined,
+      users: undefined, // Eliminar del objeto final
     }))
 
     return NextResponse.json(normalized)
