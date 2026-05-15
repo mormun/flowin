@@ -67,6 +67,17 @@ export async function POST(req: NextRequest) {
     console.log('SUPABASE URL:', supabaseUrl)
     console.log('FETCH URL:', `${supabaseUrl}/storage/v1/object/attachments/${storagePath}`)
 
+    // TEST: ¿Vercel puede resolver Supabase?
+    try {
+      const testResponse = await fetch(`${supabaseUrl}/rest/v1/`, {
+        headers: { 'apikey': serviceRoleKey }
+      })
+      console.log('TEST REST API:', testResponse.status)
+    } catch (testErr: any) {
+      console.error('TEST REST API FAILED:', testErr.cause?.message || testErr.message)
+    }
+
+
     const uploadResponse = await fetch(
       `${supabaseUrl}/storage/v1/object/attachments/${storagePath}`,
       {
