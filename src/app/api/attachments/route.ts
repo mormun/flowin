@@ -83,6 +83,7 @@ export async function POST(req: NextRequest) {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${serviceRoleKey}`,
+        'apikey': serviceRoleKey,
         'Content-Type': file.type,
         'x-upsert': 'false',
       },
