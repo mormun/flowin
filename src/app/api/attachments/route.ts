@@ -64,6 +64,9 @@ export async function POST(req: NextRequest) {
 
     const storagePath = `${ticketId}/${safeName}`
 
+    console.log('SUPABASE URL:', supabaseUrl)
+    console.log('FETCH URL:', `${supabaseUrl}/storage/v1/object/attachments/${storagePath}`)
+
     const uploadResponse = await fetch(
       `${supabaseUrl}/storage/v1/object/attachments/${storagePath}`,
       {
