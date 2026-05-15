@@ -68,13 +68,28 @@ export async function POST(req: NextRequest) {
     console.log('FETCH URL:', `${supabaseUrl}/storage/v1/object/attachments/${storagePath}`)
 
     // TEST: ¿Vercel puede resolver Supabase?
+    // TEST: probar con Google (internet funciona?)
     try {
-      const testResponse = await fetch(`${supabaseUrl}/rest/v1/`, {
-        headers: { 'apikey': serviceRoleKey }
-      })
-      console.log('TEST REST API:', testResponse.status)
-    } catch (testErr: any) {
-      console.error('TEST REST API FAILED:', testErr.cause?.message || testErr.message)
+      const testGoogle = await fetch('https://www.google.com')
+      console.log('TEST GOOGLE:', testGoogle.status)
+    } catch (e: any) {
+      console.error('TEST GOOGLE FAILED:', e.cause?.message || e.message)
+    }
+
+    // TEST: probar con dominio pooler de Supabase
+    try {
+      const testPooler = await fetch('https://aws-0-eu-central-1.pooler.supabase.com')
+      console.log('TEST POOLER:', testPooler.status)
+    } catch (e: any) {
+      console.error('TEST POOLER FAILED:', e.cause?.message || e.message)
+    }
+
+    // TEST: probar con supabase.co
+    try {
+      const testSupabase = await fetch('https://supabase.co')
+      console.log('TEST SUPABASE.CO:', testSupabase.status)
+    } catch (e: any) {
+      console.error('TEST SUPABASE.CO FAILED:', e.cause?.message || e.message)
     }
 
 
