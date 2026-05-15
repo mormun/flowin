@@ -67,25 +67,23 @@ export async function POST(req: NextRequest) {
     console.log('SUPABASE URL:', supabaseUrl)
     console.log('FETCH URL:', `${supabaseUrl}/storage/v1/object/attachments/${storagePath}`)
 
-    // TEST: ¿Vercel puede resolver Supabase?
-    // TEST: probar con dominio storage
-    try {
-      const testStorage = await fetch('https://wvzoufjhzltyzvzdqimib.storage.supabase.co')
-      console.log('TEST STORAGE DOMAIN:', testStorage.status)
-    } catch (e: any) {
-      console.error('TEST STORAGE DOMAIN FAILED:', e.cause?.message || e.message)
-    }
+    // Usar el endpoint global de Supabase con el project ref como path
+    const projectRef = 'wvzoufjhzltyzvzdqimib'
+    const storageUrl = `https://${projectRef}.supabase.co/storage/v1/object/attachments/${storagePath}`
 
-    const storageUrl = `https://wvzoufjhzltyzvzdqimib.storage.supabase.co/storage/v1/object/attachments/${storagePath}`
-    console.log('FETCH URL:', storageUrl)
+    // Pero como ese dominio no resuelve desde Vercel, usar el endpoint global
+    const globalStorageUrl = `https://supabase.co/storage/v1/object/attachments/${storagePath}`
 
-    const uploadResponse = await fetch(storageUrl, {
+    console.log('FETCH URL:', globalStorageUrl)
+
+    const uploadResponse = await fetch(globalStorageUrl, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${serviceRoleKey}`,
         'apikey': serviceRoleKey,
         'Content-Type': file.type,
         'x-upsert': 'false',
+        'host': `${projectRef}.supabase.co`,
       },
       body: buffer,
     })
