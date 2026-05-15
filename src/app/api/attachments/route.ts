@@ -85,6 +85,7 @@ export async function POST(req: NextRequest) {
           'Authorization': `Bearer ${serviceRoleKey}`,
           'Content-Type': file.type,
           'x-upsert': 'false',
+          'x-project-ref': 'wvzoufjhzltyzvzdqimib',
         },
         body: buffer,
       }
