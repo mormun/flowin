@@ -76,20 +76,18 @@ export async function POST(req: NextRequest) {
       console.error('TEST STORAGE DOMAIN FAILED:', e.cause?.message || e.message)
     }
 
+    const storageUrl = `https://wvzoufjhzltyzvzdqimib.storage.supabase.co/storage/v1/object/attachments/${storagePath}`
+    console.log('FETCH URL:', storageUrl)
 
-    const uploadResponse = await fetch(
-      `https://wvzoufjhzltyzvzdqimib.storage.supabase.co/storage/v1/object/attachments/${storagePath}`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${serviceRoleKey}`,
-          'Content-Type': file.type,
-          'x-upsert': 'false',
-          'x-project-ref': 'wvzoufjhzltyzvzdqimib',
-        },
-        body: buffer,
-      }
-    )
+    const uploadResponse = await fetch(storageUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${serviceRoleKey}`,
+        'Content-Type': file.type,
+        'x-upsert': 'false',
+      },
+      body: buffer,
+    })
 
     if (!uploadResponse.ok) {
       const errorText = await uploadResponse.text()
