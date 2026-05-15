@@ -47,7 +47,7 @@ export async function PATCH(req: Request) {
       select: { id: true, name: true },
     })
 
-    const statusMap = Object.fromEntries(statuses.map((s) => [s.name, s.id])) as Record<string, number>
+    const statusMap = Object.fromEntries(statuses.map((s: any) => [s.name, s.id])) as Record<string, number>
     const NUEVO = statusMap["Nuevo"]
     const EN_PROCESO = statusMap["En Proceso"]
     const PENDIENTE = statusMap["Pendiente"]
