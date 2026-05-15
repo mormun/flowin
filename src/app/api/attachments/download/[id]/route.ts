@@ -2,12 +2,20 @@ import { NextRequest, NextResponse } from "next/server"
 import { readFile } from "fs/promises"
 import path from "path"
 import { prisma } from "@/lib/prisma"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/auth"
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // ───── Validar autenticación ─────
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "No autenticado" }, { status: 401 })
+    }
+
     const { id } = await params
     const attachmentId = Number(id)
 
@@ -15,6 +23,7 @@ export async function GET(
       return NextResponse.json({ error: "ID inválido" }, { status: 400 })
     }
 
+    // ───── Buscar attachment en BBDD ─────
     const attachment = await prisma.attachments.findUnique({
       where: { id: attachmentId },
     })
@@ -25,20 +34,27 @@ export async function GET(
 
     const filePath = attachment.file_path
 
-    // Si es URL de Supabase (producción), redirigir
-    if (filePath && filePath.startsWith("http")) {
-      return NextResponse.redirect(filePath)
-    }
-
-    // Si es ruta local (desarrollo Docker), leer del volumen
     if (!filePath) {
       return NextResponse.json({ error: "Ruta de archivo no válida" }, { status: 500 })
     }
 
+    // ───── URL externa (Vercel Blob / Supabase): descargar y servir ─────
+    if (filePath.startsWith("http")) {
+      const fileResponse = await fetch(filePath)
+      const fileBuffer = await fileResponse.arrayBuffer()
+
+      return new NextResponse(fileBuffer, {
+        headers: {
+          "Content-Type": "application/octet-stream",
+          "Content-Disposition": `attachment; filename="${attachment.filename}"`,
+        },
+      })
+    }
+
+    // ───── Ruta local (Docker): leer del filesystem ─────
     const fullPath = path.join(process.cwd(), "public", filePath)
     const fileBuffer = await readFile(fullPath)
 
-    // Detectar tipo MIME básico
     const ext = path.extname(attachment.filename || "").toLowerCase()
     const mimeTypes: Record<string, string> = {
       ".pdf": "application/pdf",
