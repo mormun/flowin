@@ -58,36 +58,35 @@ export async function POST(req: NextRequest) {
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_")
     const buffer = Buffer.from(await file.arrayBuffer())
 
-    // ───── Supabase Storage ─────
-    const { createClient } = await import('@supabase/supabase-js')
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      //process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
+    // ───── Supabase Storage mediante API REST directa ─────
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
     const storagePath = `${ticketId}/${safeName}`
 
-    const { error } = await supabase.storage
-      .from("attachments")
-      .upload(storagePath, buffer, {
-        contentType: file.type,
-        upsert: false,
-      })
+    const uploadResponse = await fetch(
+      `${supabaseUrl}/storage/v1/object/attachments/${storagePath}`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${serviceRoleKey}`,
+          'Content-Type': file.type,
+          'x-upsert': 'false',
+        },
+        body: buffer,
+      }
+    )
 
-    if (error) {
-      console.error("Error uploading to Supabase:", error)
+    if (!uploadResponse.ok) {
+      const errorText = await uploadResponse.text()
+      console.error('Error uploading to Supabase via REST:', uploadResponse.status, errorText)
       return NextResponse.json(
-        { error: "Error subiendo archivo a Supabase" },
+        { error: `Error subiendo archivo: ${uploadResponse.statusText}` },
         { status: 500 }
       )
     }
 
-    const { data: urlData } = supabase.storage
-      .from("attachments")
-      .getPublicUrl(storagePath)
-
-    const filePath = urlData.publicUrl
+    const filePath = `${supabaseUrl}/storage/v1/object/public/attachments/${storagePath}`
 
     // ───── Guardar en BBDD ─────
     const attachment = await prisma.attachments.create({
@@ -99,6 +98,7 @@ export async function POST(req: NextRequest) {
     })
 
     return NextResponse.json(attachment, { status: 201 })
+
   } catch (err) {
     console.error("Error en POST /api/attachments:", err)
     return NextResponse.json({ error: "Error subiendo archivo" }, { status: 500 })
