@@ -77,7 +77,7 @@ export async function notifyTechsOnNewTicket(args: {
     if (techs.length === 0) return
 
     await prisma.notifications.createMany({
-      data: techs.map((t) => ({
+      data: techs.map((t: any) => ({
         user_id: t.id,
         title: "Nuevo ticket creado",
         message: `Se ha creado un nuevo ticket #${args.ticketId}.`,
