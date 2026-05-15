@@ -310,7 +310,6 @@ export default function TicketDetailPage() {
   const { data: session } = useSession()
   const id = Array.isArray(params.id) ? params.id[0] : params.id
   const chatEndRef = useRef<HTMLDivElement>(null)
-
   const [role, setRole] = useState<"user" | "tech" | "admin" | null>(null)
   const [currentUserId, setCurrentUserId] = useState<number | null>(null)
   const [ticket, setTicket] = useState<Ticket | null>(null)
@@ -622,7 +621,7 @@ export default function TicketDetailPage() {
             {ticket.attachments.map((att) => (
               <a
                 key={att.id}
-                href={att.file_path ?? "#"}
+                href={`/api/attachments/download/${att.id}`}
                 download={att.filename ?? "archivo"}
                 className="inline-flex items-center gap-2 rounded-lg transition"
                 style={{
