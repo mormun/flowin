@@ -41,9 +41,9 @@ services:
       - "3000:3000"
     volumes:
       - uploads_data:/app/public/uploads
-      - ./src:/app/src # ← AÑADIR
-      - ./public:/app/public # ← AÑADIR
-      - ./next.config.ts:/app/next.config.ts # ← AÑADIR (opcional)
+      - ./src:/app/src
+      - ./public:/app/public
+      - ./next.config.ts:/app/next.config.ts
 
 volumes:
   postgres_data:
