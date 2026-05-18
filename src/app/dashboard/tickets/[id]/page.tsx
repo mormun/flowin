@@ -640,7 +640,7 @@ export default function TicketDetailPage() {
           <p style={sectionLabelStyle}>Archivo adjunto</p>
           <div className="rounded-xl" style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", boxShadow: "var(--shadow-sm)", padding: "1rem 1.75rem" }}>
             {ticket.attachments.map((att) => (
-              
+              <a
                 key={att.id}
                 href={`/api/attachments/download/${att.id}`}
                 download={att.filename ?? "archivo"}
