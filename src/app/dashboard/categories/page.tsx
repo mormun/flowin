@@ -2,10 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
-import {
-  Pencil, Trash2, ToggleLeft, ToggleRight,
-  Plus, X, Check, Search
-} from "lucide-react"
+import { Pencil, Trash2, ToggleLeft, ToggleRight, Plus, X, Check, Search } from "lucide-react"
 
 type Category = {
   id: number
@@ -14,21 +11,18 @@ type Category = {
   active: boolean | null
 }
 
+// ───── Componentes UI reutilizables ─────
+
 const Badge = ({ label, bg, color }: { label: string; bg: string; color: string }) => (
   <span
     className="inline-flex items-center rounded-full text-sm font-medium"
-    style={{
-      backgroundColor: bg,
-      color,
-      padding: "0.10rem 0.75rem",
-      whiteSpace: "nowrap",
-      lineHeight: 1.4,
-    }}
+    style={{ backgroundColor: bg, color, padding: "0.10rem 0.75rem", whiteSpace: "nowrap", lineHeight: 1.4 }}
   >
     {label}
   </span>
 )
 
+// Modal genérico con fondo oscuro — se cierra al hacer clic fuera
 const Modal = ({ children, onClose }: { children: React.ReactNode; onClose: () => void }) => (
   <div
     className="fixed inset-0 z-50 flex items-center justify-center"
@@ -49,6 +43,7 @@ const Modal = ({ children, onClose }: { children: React.ReactNode; onClose: () =
   </div>
 )
 
+// Estilos compartidos para inputs de formulario
 const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "0.625rem 0.875rem",
@@ -61,63 +56,37 @@ const inputStyle: React.CSSProperties = {
   transition: "border-color 150ms",
 }
 
+// Variante compacta para inputs de edición inline en tabla
 const inlineInputStyle: React.CSSProperties = { ...inputStyle, padding: "0.375rem 0.625rem", fontSize: "0.875rem" }
 
-const BtnPrimary = ({
-  children, onClick, disabled,
-}: {
+const BtnPrimary = ({ children, onClick, disabled }: {
   children: React.ReactNode; onClick?: () => void; disabled?: boolean
 }) => (
   <button
     onClick={onClick}
     disabled={disabled}
     className="flex items-center gap-2 rounded-full font-medium transition disabled:opacity-50 whitespace-nowrap"
-    style={{
-      backgroundColor: "var(--color-primary)",
-      color: "#fff",
-      fontSize: "0.9375rem",
-      padding: "0.55rem 1.5rem",
-      border: "none",
-      cursor: disabled ? "not-allowed" : "pointer",
-    }}
-    onMouseEnter={(e) =>
-      !disabled &&
-      ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-primary-hover)")
-    }
-    onMouseLeave={(e) =>
-      !disabled &&
-      ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-primary)")
-    }
+    style={{ backgroundColor: "var(--color-primary)", color: "#fff", fontSize: "0.9375rem", padding: "0.55rem 1.5rem", border: "none", cursor: disabled ? "not-allowed" : "pointer" }}
+    onMouseEnter={(e) => !disabled && ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-primary-hover)")}
+    onMouseLeave={(e) => !disabled && ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-primary)")}
   >
     {children}
   </button>
 )
 
-const BtnGhost = ({
-  children, onClick,
-}: {
-  children: React.ReactNode; onClick?: () => void
-}) => (
+const BtnGhost = ({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) => (
   <button
     onClick={onClick}
     className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition"
     style={{ color: "var(--color-text-muted)", backgroundColor: "transparent", border: "none", cursor: "pointer" }}
-    onMouseEnter={(e) =>
-      ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-surface-offset)")
-    }
-    onMouseLeave={(e) =>
-      ((e.currentTarget as HTMLElement).style.backgroundColor = "transparent")
-    }
+    onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-surface-offset)")}
+    onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "transparent")}
   >
     {children}
   </button>
 )
 
-const BtnDanger = ({
-  children, onClick,
-}: {
-  children: React.ReactNode; onClick?: () => void
-}) => (
+const BtnDanger = ({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) => (
   <button
     onClick={onClick}
     className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition"
@@ -129,29 +98,17 @@ const BtnDanger = ({
   </button>
 )
 
-const IconBtn = ({
-  icon, onClick, title, danger,
-}: {
+// Botón icono cuadrado con variante de peligro (rojo)
+const IconBtn = ({ icon, onClick, title, danger }: {
   icon: React.ReactNode; onClick: () => void; title?: string; danger?: boolean
 }) => (
   <button
     onClick={onClick}
     title={title}
     className="flex h-8 w-8 items-center justify-center rounded-lg transition"
-    style={{
-      color: danger ? "var(--color-error)" : "var(--color-text-muted)",
-      backgroundColor: "transparent",
-      border: "none",
-      cursor: "pointer",
-    }}
-    onMouseEnter={(e) =>
-      ((e.currentTarget as HTMLElement).style.backgroundColor = danger
-        ? "var(--color-error-light)"
-        : "var(--color-surface-offset)")
-    }
-    onMouseLeave={(e) =>
-      ((e.currentTarget as HTMLElement).style.backgroundColor = "transparent")
-    }
+    style={{ color: danger ? "var(--color-error)" : "var(--color-text-muted)", backgroundColor: "transparent", border: "none", cursor: "pointer" }}
+    onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = danger ? "var(--color-error-light)" : "var(--color-surface-offset)")}
+    onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "transparent")}
   >
     {icon}
   </button>
@@ -162,26 +119,27 @@ export default function CategoriesPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
 
+  // Estado del modal de creación
   const [openCreateModal, setOpenCreateModal] = useState(false)
   const [newName, setNewName] = useState("")
   const [newDescription, setNewDescription] = useState("")
   const [creating, setCreating] = useState(false)
 
+  // Estado de edición inline en tabla
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editName, setEditName] = useState("")
   const [editDescription, setEditDescription] = useState("")
 
+  // Estado del modal de confirmación de eliminación
   const [openDeleteModal, setOpenDeleteModal] = useState(false)
   const [deletingCategory, setDeletingCategory] = useState<Category | null>(null)
 
+  // Cargar todas las categorías desde la API (panel admin, sin filtro de activas)
   const fetchCategories = async () => {
     try {
       const res = await fetch("/api/categories")
       const data = await res.json()
-      if (!res.ok) {
-        toast.error(data.error || "Error cargando categorías")
-        return
-      }
+      if (!res.ok) { toast.error(data.error || "Error cargando categorías"); return }
       setCategories(data)
     } catch {
       toast.error("Error cargando categorías")
@@ -192,10 +150,12 @@ export default function CategoriesPage() {
 
   useEffect(() => { fetchCategories() }, [])
 
+  // Filtrado por nombre o descripción en cliente
   const filtered = categories.filter((c) =>
     `${c.name} ${c.description ?? ""}`.toLowerCase().includes(search.toLowerCase())
   )
 
+  // Crear nueva categoría
   const handleCreate = async () => {
     if (!newName.trim()) { toast.warning("El nombre es obligatorio"); return }
     setCreating(true)
@@ -217,6 +177,7 @@ export default function CategoriesPage() {
     }
   }
 
+  // Guardar edición inline de nombre y descripción
   const handleEdit = async (id: number) => {
     if (!editName.trim()) { toast.warning("El nombre es obligatorio"); return }
     try {
@@ -235,6 +196,7 @@ export default function CategoriesPage() {
     }
   }
 
+  // Activar o desactivar categoría (toggle)
   const handleToggleActive = async (category: Category) => {
     try {
       const res = await fetch("/api/categories", {
@@ -251,6 +213,7 @@ export default function CategoriesPage() {
     }
   }
 
+  // Confirmar y ejecutar eliminación de categoría
   const handleDeleteConfirm = async () => {
     if (!deletingCategory) return
     try {
@@ -272,25 +235,14 @@ export default function CategoriesPage() {
   return (
     <div style={{ width: "100%", padding: "2.5rem 4rem 3rem 3.5rem" }}>
       <div style={{ marginBottom: "2rem" }}>
-        <h2 className="text-2xl font-bold" style={{ color: "var(--color-text)" }}>
-          Categorías
-        </h2>
-        <p className="mt-1 text-sm" style={{ color: "var(--color-text-muted)" }}>
-          Gestión de categorías de tickets
-        </p>
+        <h2 className="text-2xl font-bold" style={{ color: "var(--color-text)" }}>Categorías</h2>
+        <p className="mt-1 text-sm" style={{ color: "var(--color-text-muted)" }}>Gestión de categorías de tickets</p>
       </div>
 
-      <div
-        className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
-        style={{ marginBottom: "1.5rem" }}
-      >
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between" style={{ marginBottom: "1.5rem" }}>
         <div
           className="flex items-center gap-2 rounded-lg px-3 py-2.5"
-          style={{
-            backgroundColor: "var(--color-surface)",
-            border: "1px solid var(--color-border)",
-            width: "260px",
-          }}
+          style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", width: "260px" }}
         >
           <Search size={14} color="var(--color-text-faint)" />
           <input
@@ -302,7 +254,6 @@ export default function CategoriesPage() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-
         <BtnPrimary onClick={() => setOpenCreateModal(true)}>
           <Plus size={15} /> Nueva categoría
         </BtnPrimary>
@@ -310,20 +261,12 @@ export default function CategoriesPage() {
 
       <div
         className="w-full overflow-x-auto rounded-xl"
-        style={{
-          backgroundColor: "var(--color-surface)",
-          border: "1px solid var(--color-border)",
-          boxShadow: "var(--shadow-sm)",
-        }}
+        style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", boxShadow: "var(--shadow-sm)" }}
       >
         {loading ? (
           <div className="space-y-3 p-6">
             {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="h-10 rounded-lg animate-pulse"
-                style={{ backgroundColor: "var(--color-surface-offset)" }}
-              />
+              <div key={i} className="h-10 rounded-lg animate-pulse" style={{ backgroundColor: "var(--color-surface-offset)" }} />
             ))}
           </div>
         ) : filtered.length === 0 ? (
@@ -331,9 +274,7 @@ export default function CategoriesPage() {
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mb-3">
               <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
             </svg>
-            <p className="text-base font-medium" style={{ color: "var(--color-text-muted)" }}>
-              No hay categorías que mostrar
-            </p>
+            <p className="text-base font-medium" style={{ color: "var(--color-text-muted)" }}>No hay categorías que mostrar</p>
           </div>
         ) : (
           <table className="w-full">
@@ -361,9 +302,7 @@ export default function CategoriesPage() {
               {filtered.map((cat, idx) => (
                 <tr
                   key={cat.id}
-                  style={{
-                    borderBottom: idx < filtered.length - 1 ? "1px solid var(--color-divider)" : "none",
-                  }}
+                  style={{ borderBottom: idx < filtered.length - 1 ? "1px solid var(--color-divider)" : "none" }}
                 >
                   <td
                     className="py-3.5 text-base tabular-nums font-medium"
@@ -372,6 +311,7 @@ export default function CategoriesPage() {
                     {cat.id}
                   </td>
 
+                  {/* Modo edición inline: muestra inputs en lugar de texto */}
                   {editingId === cat.id ? (
                     <>
                       <td className="py-2 pr-2">
@@ -398,11 +338,10 @@ export default function CategoriesPage() {
                       </td>
                     </>
                   ) : (
+                    // Modo lectura: muestra datos y botones de acción
                     <>
                       <td className="py-3.5 pr-4">
-                        <span className="text-base font-medium" style={{ color: "var(--color-text)" }}>
-                          {cat.name}
-                        </span>
+                        <span className="text-base font-medium" style={{ color: "var(--color-text)" }}>{cat.name}</span>
                       </td>
                       <td className="py-3.5 pr-4 text-base" style={{ color: "var(--color-text-muted)" }}>
                         {cat.description ?? "—"}
@@ -447,20 +386,16 @@ export default function CategoriesPage() {
         )}
       </div>
 
+      {/* Modal: crear categoría */}
       {openCreateModal && (
         <Modal onClose={() => setOpenCreateModal(false)}>
           <div className="flex items-center justify-between" style={{ marginBottom: "1.75rem" }}>
             <div>
-              <h3 className="text-lg font-semibold" style={{ color: "var(--color-text)" }}>
-                Nueva categoría
-              </h3>
-              <p className="text-sm mt-0.5" style={{ color: "var(--color-text-muted)" }}>
-                Rellena los datos de la nueva categoría
-              </p>
+              <h3 className="text-lg font-semibold" style={{ color: "var(--color-text)" }}>Nueva categoría</h3>
+              <p className="text-sm mt-0.5" style={{ color: "var(--color-text-muted)" }}>Rellena los datos de la nueva categoría</p>
             </div>
             <IconBtn icon={<X size={16} />} onClick={() => setOpenCreateModal(false)} />
           </div>
-
           <div className="flex flex-col gap-5">
             <div className="flex flex-col gap-2">
               <label className="text-sm font-medium" style={{ color: "var(--color-text)" }}>
@@ -473,11 +408,8 @@ export default function CategoriesPage() {
                 placeholder="Nombre de la categoría"
               />
             </div>
-
             <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium" style={{ color: "var(--color-text)" }}>
-                Descripción
-              </label>
+              <label className="text-sm font-medium" style={{ color: "var(--color-text)" }}>Descripción</label>
               <textarea
                 rows={3}
                 className="resize-none rounded-lg outline-none transition"
@@ -493,9 +425,7 @@ export default function CategoriesPage() {
                 onChange={(e) => setNewDescription(e.target.value)}
               />
             </div>
-
             <div style={{ height: "1px", backgroundColor: "var(--color-divider)" }} />
-
             <div className="flex justify-end gap-2">
               <BtnGhost onClick={() => { setOpenCreateModal(false); setNewName(""); setNewDescription("") }}>
                 Cancelar
@@ -515,36 +445,26 @@ export default function CategoriesPage() {
         </Modal>
       )}
 
+      {/* Modal: confirmar eliminación */}
       {openDeleteModal && deletingCategory && (
         <Modal onClose={() => { setOpenDeleteModal(false); setDeletingCategory(null) }}>
           <div className="flex items-center justify-between" style={{ marginBottom: "1.75rem" }}>
             <div>
-              <h3 className="text-lg font-semibold" style={{ color: "var(--color-text)" }}>
-                Eliminar categoría
-              </h3>
-              <p className="text-sm mt-0.5" style={{ color: "var(--color-text-muted)" }}>
-                Esta acción no se puede deshacer
-              </p>
+              <h3 className="text-lg font-semibold" style={{ color: "var(--color-text)" }}>Eliminar categoría</h3>
+              <p className="text-sm mt-0.5" style={{ color: "var(--color-text-muted)" }}>Esta acción no se puede deshacer</p>
             </div>
             <IconBtn icon={<X size={16} />} onClick={() => { setOpenDeleteModal(false); setDeletingCategory(null) }} />
           </div>
-
           <p className="text-sm" style={{ color: "var(--color-text-muted)", marginBottom: "0.75rem" }}>
             ¿Estás seguro de que quieres eliminar{" "}
-            <span className="font-semibold" style={{ color: "var(--color-text)" }}>
-              "{deletingCategory.name}"
-            </span>?
+            <span className="font-semibold" style={{ color: "var(--color-text)" }}>"{deletingCategory.name}"</span>?
           </p>
           <p className="text-xs" style={{ color: "var(--color-text-faint)", marginBottom: "1.75rem" }}>
             Si la categoría tiene tickets asociados no podrá eliminarse.
           </p>
-
           <div style={{ height: "1px", backgroundColor: "var(--color-divider)", marginBottom: "1.5rem" }} />
-
           <div className="flex justify-end gap-2">
-            <BtnGhost onClick={() => { setOpenDeleteModal(false); setDeletingCategory(null) }}>
-              Cancelar
-            </BtnGhost>
+            <BtnGhost onClick={() => { setOpenDeleteModal(false); setDeletingCategory(null) }}>Cancelar</BtnGhost>
             <BtnDanger onClick={handleDeleteConfirm}>
               <Trash2 size={14} /> Eliminar categoría
             </BtnDanger>

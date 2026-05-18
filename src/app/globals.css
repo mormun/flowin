@@ -11,7 +11,7 @@
   --color-border:           #e8e6e3;
   --color-divider:          #eeece9;
 
-  /* ── Texto ── */
+  /* ── Texto: tres niveles de énfasis ── */
   --color-text:             #1a1917;
   --color-text-muted:       #6b6a66;
   --color-text-faint:       #b0afa9;
@@ -30,20 +30,20 @@
   --color-error:            #b91c1c;
   --color-error-light:      #fef2f2;
 
-  /* ── Sombras muy sutiles estilo Notion ── */
+  /* ── Sombras sutiles estilo Notion ── */
   --shadow-xs: 0 1px 2px rgba(26, 25, 23, 0.04);
   --shadow-sm: 0 1px 3px rgba(26, 25, 23, 0.06), 0 1px 2px rgba(26, 25, 23, 0.04);
   --shadow-md: 0 4px 16px rgba(26, 25, 23, 0.07), 0 1px 3px rgba(26, 25, 23, 0.05);
   --shadow-lg: 0 12px 32px rgba(26, 25, 23, 0.10), 0 2px 6px rgba(26, 25, 23, 0.06);
 
-  /* ── Radios ── */
+  /* ── Radios de borde ── */
   --radius-sm: 0.25rem;
   --radius-md: 0.5rem;
   --radius-lg: 0.75rem;
   --radius-xl: 1rem;
 }
 
-/* ── Base ─────────────────────────────────────────── */
+/* ── Reset base ──────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 html {
@@ -60,26 +60,37 @@ body {
   line-height: 1.6;
 }
 
+/* Encabezados: balance de texto y color base */
 h1, h2, h3, h4, h5, h6 {
   line-height: 1.25;
   text-wrap: balance;
   color: var(--color-text);
 }
 
+/* Párrafos y listas: ajuste de texto mejorado */
 p, li { text-wrap: pretty; }
+
+/* Hereda fuente y color del documento en elementos de formulario */
 input, button, textarea, select { font: inherit; color: inherit; }
+
 img, svg { display: block; max-width: 100%; }
+
+/* Reset de botón: sin fondo ni borde por defecto */
 button { cursor: pointer; background: none; border: none; }
+
 table { border-collapse: collapse; width: 100%; }
 
+/* Clase utilitaria para números tabulares (alineación en tablas) */
 .tabular { font-variant-numeric: tabular-nums lining-nums; }
 
+/* Accesibilidad: anillo de foco visible con color primario */
 :focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
   border-radius: var(--radius-sm);
 }
 
+/* Accesibilidad: desactiva animaciones si el usuario lo prefiere */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

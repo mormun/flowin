@@ -3,13 +3,16 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/auth"
 import { prisma } from "@/lib/prisma"
 
+// GET /api/tickets/[id]
+// Devuelve el detalle completo de un ticket por su ID,
+// incluyendo adjuntos, categoría y usuario asignado.
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Verificar sesión activa
     const session = await getServerSession(authOptions)
-
     if (!session?.user?.email) {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 })
     }
@@ -17,10 +20,12 @@ export async function GET(
     const { id } = await params
     const ticketId = Number(id)
 
+    // Validar que el ID sea un número válido
     if (isNaN(ticketId)) {
       return NextResponse.json({ error: "ID inválido" }, { status: 400 })
     }
 
+    // Obtener el ticket con sus relaciones principales
     const ticket = await prisma.tickets.findUnique({
       where: { id: ticketId },
       select: {
@@ -46,6 +51,7 @@ export async function GET(
       return NextResponse.json({ error: "Ticket no encontrado" }, { status: 404 })
     }
 
+    // Obtener datos del técnico asignado si existe
     let assignedUser = null
     if (ticket.assigned_to) {
       assignedUser = await prisma.users.findUnique({
@@ -56,7 +62,7 @@ export async function GET(
 
     return NextResponse.json({ ...ticket, assigned_user: assignedUser })
   } catch (error) {
-    console.error("ERROR TICKET DETAIL:", error)
+    console.error("ERROR GET /api/tickets/[id]:", error)
     return NextResponse.json({ error: "Error obteniendo ticket" }, { status: 500 })
   }
 }

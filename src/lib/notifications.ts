@@ -11,8 +11,10 @@ export async function notifyTicketCreatorOnStatusChange(args: {
   newStatusId: number
 }) {
   try {
+    // Evitar autonotificación
     if (args.creatorId === args.actorId) return
 
+    // Obtener el nombre del nuevo estado para incluirlo en el mensaje
     const status = await prisma.status.findUnique({
       where: { id: args.newStatusId },
       select: { name: true },
@@ -41,6 +43,7 @@ export async function notifyTechOnAssignment(args: {
   actorId: number
 }) {
   try {
+    // Evitar autonotificación
     if (args.techId === args.actorId) return
 
     await prisma.notifications.create({
@@ -58,13 +61,14 @@ export async function notifyTechOnAssignment(args: {
 
 /**
  * Notifica a todos los técnicos activos cuando se crea un nuevo ticket.
- * No notifica al actor.
+ * No notifica al actor (por si el actor fuera un técnico o admin).
  */
 export async function notifyTechsOnNewTicket(args: {
   ticketId: number
   actorId: number
 }) {
   try {
+    // Obtener todos los técnicos activos excepto el que realiza la acción
     const techs = await prisma.users.findMany({
       where: {
         role: "tech",
@@ -76,6 +80,7 @@ export async function notifyTechsOnNewTicket(args: {
 
     if (techs.length === 0) return
 
+    // Crear una notificación por cada técnico en una sola operación
     await prisma.notifications.createMany({
       data: techs.map((t) => ({
         user_id: t.id,

@@ -3,23 +3,26 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/auth"
 import { prisma } from "@/lib/prisma"
 
-export async function POST() {
+// GET /api/my-tickets
+// Devuelve todos los tickets creados por el usuario autenticado, ordenados por fecha desc.
+export async function GET() {
   try {
+    // Verificar sesión activa
     const session = await getServerSession(authOptions)
-
     if (!session?.user?.email) {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 })
     }
 
+    // Obtener el ID del usuario autenticado
     const user = await prisma.users.findUnique({
       where: { email: session.user.email },
       select: { id: true },
     })
-
     if (!user) {
       return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 })
     }
 
+    // Obtener todos los tickets del usuario con el nombre de categoría incluido
     const tickets = await prisma.tickets.findMany({
       where: { created_by: user.id },
       orderBy: { created_at: "desc" },
@@ -30,7 +33,7 @@ export async function POST() {
 
     return NextResponse.json(tickets)
   } catch (error) {
-    console.error("ERROR MY TICKETS:", error)
+    console.error("ERROR GET /api/my-tickets:", error)
     return NextResponse.json({ error: "Error obteniendo tickets" }, { status: 500 })
   }
 }

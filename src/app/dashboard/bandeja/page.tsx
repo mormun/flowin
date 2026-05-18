@@ -9,12 +9,11 @@ function useDocumentVisible() {
   const [visible, setVisible] = useState(true)
   useEffect(() => {
     const handleChange = () => setVisible(!document.hidden)
-    document.addEventListener('visibilitychange', handleChange)
-    return () => document.removeEventListener('visibilitychange', handleChange)
+    document.addEventListener("visibilitychange", handleChange)
+    return () => document.removeEventListener("visibilitychange", handleChange)
   }, [])
   return visible
 }
-
 
 type Ticket = {
   id: number
@@ -30,35 +29,76 @@ type Ticket = {
 
 const PRIORITY_STYLES: Record<string, { bg: string; color: string }> = {
   Crítica: { bg: "var(--color-error-light)", color: "var(--color-error)" },
-  Alta: { bg: "var(--color-warning-light)", color: "var(--color-warning)" },
-  Media: { bg: "#fef9c3", color: "#854d0e" },
-  Baja: { bg: "var(--color-success-light)", color: "var(--color-success)" },
+  Alta:    { bg: "var(--color-warning-light)", color: "var(--color-warning)" },
+  Media:   { bg: "#fef9c3", color: "#854d0e" },
+  Baja:    { bg: "var(--color-success-light)", color: "var(--color-success)" },
 }
 
 const STATUS_STYLES: Record<string, { bg: string; color: string }> = {
-  Nuevo: { bg: "#dbeafe", color: "#1d4ed8" },
-  Proceso: { bg: "var(--color-primary-light)", color: "var(--color-primary)" },
-  Pendiente: { bg: "#fef9c3", color: "#854d0e" },
-  Solucionado: { bg: "var(--color-success-light)", color: "var(--color-success)" },
-  Cancelado: { bg: "var(--color-error-light)", color: "var(--color-error)" },
-  Cerrado: { bg: "var(--color-bg)", color: "var(--color-text-muted)" },
+  Nuevo:      { bg: "#dbeafe", color: "#1d4ed8" },
+  Proceso:    { bg: "var(--color-primary-light)", color: "var(--color-primary)" },
+  Pendiente:  { bg: "#fef9c3", color: "#854d0e" },
+  Solucionado:{ bg: "var(--color-success-light)", color: "var(--color-success)" },
+  Cancelado:  { bg: "var(--color-error-light)", color: "var(--color-error)" },
+  Cerrado:    { bg: "var(--color-bg)", color: "var(--color-text-muted)" },
 }
 
 const ITEMS_PER_PAGE = 10
 
+// Componente badge reutilizable para prioridad y estado
 const Badge = ({ label, styles }: { label: string; styles: { bg: string; color: string } }) => (
   <span
     className="inline-flex items-center rounded-full text-sm font-medium"
-    style={{
-      backgroundColor: styles.bg,
-      color: styles.color,
-      padding: "0.10rem 0.75rem",
-      whiteSpace: "nowrap",
-      lineHeight: 1.4,
-    }}
+    style={{ backgroundColor: styles.bg, color: styles.color, padding: "0.10rem 0.75rem", whiteSpace: "nowrap", lineHeight: 1.4 }}
   >
     {label}
   </span>
+)
+
+// Columna de cabecera ordenable
+const SortTh = ({
+  label, value, current, onClick, firstCol,
+}: {
+  label: string
+  value: string
+  current: string
+  onClick: () => void
+  firstCol?: boolean
+}) => (
+  <th
+    className="cursor-pointer select-none pr-4 text-left text-sm font-semibold uppercase tracking-wider"
+    style={{
+      color: current === value ? "var(--color-primary)" : "var(--color-text-muted)",
+      paddingLeft: firstCol ? "2rem" : undefined,
+      paddingTop: "1rem",
+      paddingBottom: "1rem",
+    }}
+    onClick={onClick}
+  >
+    <span className="flex items-center gap-1">
+      {label}
+      {current === value && (
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      )}
+    </span>
+  </th>
+)
+
+// Columna de cabecera no ordenable
+const PlainTh = ({ label, right }: { label: string; right?: boolean }) => (
+  <th
+    className="pr-4 text-sm font-semibold uppercase tracking-wider"
+    style={{
+      color: "var(--color-text-muted)",
+      paddingTop: "1rem",
+      paddingBottom: "1rem",
+      textAlign: right ? "right" : "left",
+    }}
+  >
+    {label}
+  </th>
 )
 
 export default function BandejaPage() {
@@ -69,7 +109,6 @@ export default function BandejaPage() {
   const [sortBy, setSortBy] = useState<"id" | "title" | "priority" | "date">("date")
   const [currentPage, setCurrentPage] = useState(1)
   const router = useRouter()
-
   const isVisible = useDocumentVisible()
 
   useEffect(() => {
@@ -101,6 +140,7 @@ export default function BandejaPage() {
     return () => clearInterval(interval)
   }, [isVisible])
 
+  // Filtrado, búsqueda y ordenación en cliente
   const filtered = useMemo(() => {
     return tickets
       .filter((t) => t.title.toLowerCase().includes(search.toLowerCase()))
@@ -113,47 +153,13 @@ export default function BandejaPage() {
       })
   }, [tickets, search, statusFilter, sortBy])
 
+  // Resetear página al cambiar filtros
   useEffect(() => {
     setCurrentPage(1)
   }, [search, statusFilter, sortBy])
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE)
   const paginated = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
-
-  const SortTh = ({ label, value }: { label: string; value: typeof sortBy }) => (
-    <th
-      className="cursor-pointer select-none pr-4 text-left text-sm font-semibold uppercase tracking-wider"
-      style={{
-        color: sortBy === value ? "var(--color-primary)" : "var(--color-text-muted)",
-        paddingTop: "1rem",
-        paddingBottom: "1rem",
-      }}
-      onClick={() => setSortBy(value)}
-    >
-      <span className="flex items-center gap-1">
-        {label}
-        {sortBy === value && (
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-            <polyline points="6 9 12 15 18 9" />
-          </svg>
-        )}
-      </span>
-    </th>
-  )
-
-  const PlainTh = ({ label, right }: { label: string; right?: boolean }) => (
-    <th
-      className="pr-4 text-sm font-semibold uppercase tracking-wider"
-      style={{
-        color: "var(--color-text-muted)",
-        paddingTop: "1rem",
-        paddingBottom: "1rem",
-        textAlign: right ? "right" : "left",
-      }}
-    >
-      {label}
-    </th>
-  )
 
   return (
     <div style={{ width: "100%", padding: "2rem 3rem 2rem 2.5rem", marginTop: "1.5rem" }}>
@@ -230,32 +236,14 @@ export default function BandejaPage() {
           <table className="w-full">
             <thead>
               <tr style={{ borderBottom: "1px solid var(--color-border)" }}>
-                <th
-                  className="cursor-pointer select-none pr-4 text-left text-sm font-semibold uppercase tracking-wider"
-                  style={{
-                    color: sortBy === "id" ? "var(--color-primary)" : "var(--color-text-muted)",
-                    paddingLeft: "2rem",
-                    paddingTop: "1rem",
-                    paddingBottom: "1rem",
-                  }}
-                  onClick={() => setSortBy("id")}
-                >
-                  <span className="flex items-center gap-1">
-                    ID TICKET
-                    {sortBy === "id" && (
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                        <polyline points="6 9 12 15 18 9" />
-                      </svg>
-                    )}
-                  </span>
-                </th>
-                <SortTh label="Título" value="title" />
+                <SortTh label="ID Ticket" value="id" current={sortBy} firstCol onClick={() => setSortBy("id")} />
+                <SortTh label="Título" value="title" current={sortBy} onClick={() => setSortBy("title")} />
                 <PlainTh label="Categoría" />
-                <SortTh label="Prioridad" value="priority" />
+                <SortTh label="Prioridad" value="priority" current={sortBy} onClick={() => setSortBy("priority")} />
                 <PlainTh label="Estado" />
                 <PlainTh label="Creado por" />
                 <PlainTh label="Asignado a" />
-                <SortTh label="Fecha" value="date" />
+                <SortTh label="Fecha" value="date" current={sortBy} onClick={() => setSortBy("date")} />
               </tr>
             </thead>
             <tbody>
@@ -274,43 +262,36 @@ export default function BandejaPage() {
                   >
                     #{t.id}
                   </td>
-
                   <td style={{ paddingTop: "0.875rem", paddingBottom: "0.875rem", paddingRight: "1rem", maxWidth: "200px" }}>
                     <span className="block truncate text-base font-medium" style={{ color: "var(--color-text)" }}>
                       {t.title}
                     </span>
                   </td>
-
                   <td className="text-base" style={{ paddingTop: "0.875rem", paddingBottom: "0.875rem", paddingRight: "1rem", color: "var(--color-text)" }}>
                     {t.categories?.name ?? "—"}
                   </td>
-
                   <td style={{ paddingTop: "0.875rem", paddingBottom: "0.875rem", paddingRight: "1rem" }}>
                     <Badge
                       label={t.priority}
                       styles={PRIORITY_STYLES[t.priority] ?? { bg: "var(--color-bg)", color: "var(--color-text-muted)" }}
                     />
                   </td>
-
                   <td style={{ paddingTop: "0.875rem", paddingBottom: "0.875rem", paddingRight: "1rem" }}>
                     <Badge
                       label={t.status?.name ?? "—"}
                       styles={STATUS_STYLES[t.status?.name ?? ""] ?? { bg: "var(--color-bg)", color: "var(--color-text-muted)" }}
                     />
                   </td>
-
                   <td className="text-base" style={{ paddingTop: "0.875rem", paddingBottom: "0.875rem", paddingRight: "1rem", color: "var(--color-text)" }}>
                     {t.users_tickets_created_byTousers
                       ? `${t.users_tickets_created_byTousers.name} ${t.users_tickets_created_byTousers.surname}`
                       : "—"}
                   </td>
-
                   <td className="text-base" style={{ paddingTop: "0.875rem", paddingBottom: "0.875rem", paddingRight: "1rem", color: "var(--color-text)" }}>
                     {t.users_tickets_assigned_toTousers
                       ? `${t.users_tickets_assigned_toTousers.name} ${t.users_tickets_assigned_toTousers.surname}`
                       : <span style={{ color: "var(--color-text-faint)", fontStyle: "italic" }}>Sin asignar</span>}
                   </td>
-
                   <td className="text-base tabular-nums" style={{ paddingTop: "0.875rem", paddingBottom: "0.875rem", paddingRight: "1rem", color: "var(--color-text)" }}>
                     {new Date(t.created_at).toLocaleDateString("es-ES")}
                   </td>
@@ -331,16 +312,10 @@ export default function BandejaPage() {
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               disabled={currentPage === 1}
               className="rounded-lg text-sm font-medium transition disabled:opacity-40"
-              style={{
-                backgroundColor: "var(--color-surface)",
-                border: "1px solid var(--color-border)",
-                color: "var(--color-text-muted)",
-                padding: "0.5rem 1rem",
-              }}
+              style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", color: "var(--color-text-muted)", padding: "0.5rem 1rem" }}
             >
               ←
             </button>
-
             {Array.from({ length: totalPages }, (_, i) => i + 1)
               .filter((p) => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
               .reduce<(number | "...")[]>((acc, p, idx, arr) => {
@@ -367,17 +342,11 @@ export default function BandejaPage() {
                   </button>
                 )
               )}
-
             <button
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
               className="rounded-lg text-sm font-medium transition disabled:opacity-40"
-              style={{
-                backgroundColor: "var(--color-surface)",
-                border: "1px solid var(--color-border)",
-                color: "var(--color-text-muted)",
-                padding: "0.5rem 1rem",
-              }}
+              style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", color: "var(--color-text-muted)", padding: "0.5rem 1rem" }}
             >
               →
             </button>

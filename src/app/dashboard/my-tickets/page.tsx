@@ -102,7 +102,7 @@ export default function MyTicketsPage() {
   useEffect(() => {
     const fetchTickets = async () => {
       try {
-        const res = await fetch("/api/my-tickets", { method: "POST" })
+        const res = await fetch("/api/my-tickets")
         const data = await res.json()
         if (!res.ok) {
           toast.error(data?.error ?? "Error cargando tickets")

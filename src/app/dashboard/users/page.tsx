@@ -2,10 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
-import {
-  Pencil, Trash2, ToggleLeft, ToggleRight,
-  Plus, X, Check, KeyRound, Copy, Search
-} from "lucide-react"
+import { Pencil, Trash2, ToggleLeft, ToggleRight, Plus, X, Check, KeyRound, Copy, Search } from "lucide-react"
 
 type User = {
   id: number
@@ -17,33 +14,32 @@ type User = {
   registration_date: string | null
 }
 
+// Etiquetas legibles para cada rol
 const ROLE_LABELS: Record<string, string> = {
-  user: "Usuario",
-  tech: "Técnico",
+  user:  "Usuario",
+  tech:  "Técnico",
   admin: "Administrador",
 }
 
+// Estilos de badge por rol
 const ROLE_STYLES: Record<string, { bg: string; color: string }> = {
-  user: { bg: "#dbeafe", color: "#1d4ed8" },
-  tech: { bg: "var(--color-primary-light)", color: "var(--color-primary)" },
+  user:  { bg: "#dbeafe", color: "#1d4ed8" },
+  tech:  { bg: "var(--color-primary-light)", color: "var(--color-primary)" },
   admin: { bg: "var(--color-warning-light)", color: "var(--color-warning)" },
 }
+
+// ───── Componentes UI reutilizables ─────
 
 const Badge = ({ label, bg, color }: { label: string; bg: string; color: string }) => (
   <span
     className="inline-flex items-center rounded-full text-sm font-medium"
-    style={{
-      backgroundColor: bg,
-      color,
-      padding: "0.10rem 0.75rem",
-      whiteSpace: "nowrap",
-      lineHeight: 1.4,
-    }}
+    style={{ backgroundColor: bg, color, padding: "0.10rem 0.75rem", whiteSpace: "nowrap", lineHeight: 1.4 }}
   >
     {label}
   </span>
 )
 
+// Modal genérico con fondo oscuro — se cierra al hacer clic fuera
 const Modal = ({ children, onClose }: { children: React.ReactNode; onClose: () => void }) => (
   <div
     className="fixed inset-0 z-50 flex items-center justify-center"
@@ -52,23 +48,15 @@ const Modal = ({ children, onClose }: { children: React.ReactNode; onClose: () =
   >
     <div
       className="w-full max-w-md rounded-xl shadow-xl"
-      style={{
-        backgroundColor: "var(--color-surface)",
-        border: "1px solid var(--color-border)",
-        boxShadow: "var(--shadow-lg)",
-        padding: "2rem 2.5rem 2.5rem 2.5rem",
-      }}
+      style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", boxShadow: "var(--shadow-lg)", padding: "2rem 2.5rem 2.5rem 2.5rem" }}
     >
       {children}
     </div>
   </div>
 )
 
-const FormField = ({
-  label, required, children,
-}: {
-  label: string; required?: boolean; children: React.ReactNode
-}) => (
+// Campo de formulario con etiqueta y soporte de campo obligatorio
+const FormField = ({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) => (
   <div className="flex flex-col gap-2">
     <label className="text-sm font-medium" style={{ color: "var(--color-text)" }}>
       {label}
@@ -78,6 +66,7 @@ const FormField = ({
   </div>
 )
 
+// Estilos compartidos para inputs de formulario
 const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "0.625rem 0.875rem",
@@ -90,63 +79,35 @@ const inputStyle: React.CSSProperties = {
   transition: "border-color 150ms",
 }
 
+// Variante compacta para inputs de edición inline en tabla
 const inlineInputStyle: React.CSSProperties = { ...inputStyle, padding: "0.375rem 0.625rem", fontSize: "0.875rem" }
 
-const BtnPrimary = ({
-  children, onClick, disabled,
-}: {
-  children: React.ReactNode; onClick?: () => void; disabled?: boolean
-}) => (
+const BtnPrimary = ({ children, onClick, disabled }: { children: React.ReactNode; onClick?: () => void; disabled?: boolean }) => (
   <button
     onClick={onClick}
     disabled={disabled}
     className="flex items-center gap-2 rounded-full font-medium transition disabled:opacity-50 whitespace-nowrap"
-    style={{
-      backgroundColor: "var(--color-primary)",
-      color: "#fff",
-      fontSize: "0.9375rem",
-      padding: "0.55rem 1.5rem",
-      border: "none",
-      cursor: disabled ? "not-allowed" : "pointer",
-    }}
-    onMouseEnter={(e) =>
-      !disabled &&
-      ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-primary-hover)")
-    }
-    onMouseLeave={(e) =>
-      !disabled &&
-      ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-primary)")
-    }
+    style={{ backgroundColor: "var(--color-primary)", color: "#fff", fontSize: "0.9375rem", padding: "0.55rem 1.5rem", border: "none", cursor: disabled ? "not-allowed" : "pointer" }}
+    onMouseEnter={(e) => !disabled && ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-primary-hover)")}
+    onMouseLeave={(e) => !disabled && ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-primary)")}
   >
     {children}
   </button>
 )
 
-const BtnGhost = ({
-  children, onClick,
-}: {
-  children: React.ReactNode; onClick?: () => void
-}) => (
+const BtnGhost = ({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) => (
   <button
     onClick={onClick}
     className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition"
     style={{ color: "var(--color-text-muted)", backgroundColor: "transparent", border: "none", cursor: "pointer" }}
-    onMouseEnter={(e) =>
-      ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-surface-offset)")
-    }
-    onMouseLeave={(e) =>
-      ((e.currentTarget as HTMLElement).style.backgroundColor = "transparent")
-    }
+    onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-surface-offset)")}
+    onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "transparent")}
   >
     {children}
   </button>
 )
 
-const BtnDanger = ({
-  children, onClick,
-}: {
-  children: React.ReactNode; onClick?: () => void
-}) => (
+const BtnDanger = ({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) => (
   <button
     onClick={onClick}
     className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition"
@@ -158,29 +119,15 @@ const BtnDanger = ({
   </button>
 )
 
-const IconBtn = ({
-  icon, onClick, title, danger,
-}: {
-  icon: React.ReactNode; onClick: () => void; title?: string; danger?: boolean
-}) => (
+// Botón icono cuadrado con variante de peligro (rojo)
+const IconBtn = ({ icon, onClick, title, danger }: { icon: React.ReactNode; onClick: () => void; title?: string; danger?: boolean }) => (
   <button
     onClick={onClick}
     title={title}
     className="flex h-8 w-8 items-center justify-center rounded-lg transition"
-    style={{
-      color: danger ? "var(--color-error)" : "var(--color-text-muted)",
-      backgroundColor: "transparent",
-      border: "none",
-      cursor: "pointer",
-    }}
-    onMouseEnter={(e) =>
-    ((e.currentTarget as HTMLElement).style.backgroundColor = danger
-      ? "var(--color-error-light)"
-      : "var(--color-surface-offset)")
-    }
-    onMouseLeave={(e) =>
-      ((e.currentTarget as HTMLElement).style.backgroundColor = "transparent")
-    }
+    style={{ color: danger ? "var(--color-error)" : "var(--color-text-muted)", backgroundColor: "transparent", border: "none", cursor: "pointer" }}
+    onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = danger ? "var(--color-error-light)" : "var(--color-surface-offset)")}
+    onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "transparent")}
   >
     {icon}
   </button>
@@ -192,6 +139,7 @@ export default function UsersPage() {
   const [search, setSearch] = useState("")
   const [roleFilter, setRoleFilter] = useState("all")
 
+  // Estado del modal de creación
   const [openCreateModal, setOpenCreateModal] = useState(false)
   const [newName, setNewName] = useState("")
   const [newSurname, setNewSurname] = useState("")
@@ -200,27 +148,28 @@ export default function UsersPage() {
   const [newPassword, setNewPassword] = useState("")
   const [creating, setCreating] = useState(false)
 
+  // Estado de edición inline en tabla
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editName, setEditName] = useState("")
   const [editSurname, setEditSurname] = useState("")
   const [editEmail, setEditEmail] = useState("")
   const [editRole, setEditRole] = useState("")
 
+  // Estado del modal de eliminación
   const [openDeleteModal, setOpenDeleteModal] = useState(false)
   const [deletingUser, setDeletingUser] = useState<User | null>(null)
 
+  // Estado del modal de reset de contraseña
   const [openResetModal, setOpenResetModal] = useState(false)
   const [resettingUser, setResettingUser] = useState<User | null>(null)
   const [generatedPassword, setGeneratedPassword] = useState("")
 
+  // Cargar usuarios desde la API
   const fetchUsers = async () => {
     try {
       const res = await fetch("/api/users")
       const data = await res.json()
-      if (!res.ok) {
-        toast.error(data?.error ?? "Error cargando usuarios")
-        return
-      }
+      if (!res.ok) { toast.error(data?.error ?? "Error cargando usuarios"); return }
       setUsers(data)
     } catch {
       toast.error("Error cargando usuarios")
@@ -231,39 +180,27 @@ export default function UsersPage() {
 
   useEffect(() => { fetchUsers() }, [])
 
+  // Filtrado por nombre/email y rol en cliente
   const filteredUsers = users
-    .filter((u) =>
-      `${u.name} ${u.surname} ${u.email}`.toLowerCase().includes(search.toLowerCase())
-    )
+    .filter((u) => `${u.name} ${u.surname} ${u.email}`.toLowerCase().includes(search.toLowerCase()))
     .filter((u) => roleFilter === "all" || u.role === roleFilter)
 
+  // Crear nuevo usuario con validación previa en cliente
   const handleCreate = async () => {
-    const trimmedName = newName.trim()
+    const trimmedName    = newName.trim()
     const trimmedSurname = newSurname.trim()
-    const trimmedEmail = newEmail.trim()
+    const trimmedEmail   = newEmail.trim()
 
-    if (!trimmedName || !trimmedSurname || !trimmedEmail) {
-      toast.warning("Nombre, apellido y email son obligatorios"); return
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-      toast.warning("Formato de email no válido"); return
-    }
-    if (newPassword && newPassword.length < 8) {
-      toast.warning("La contraseña debe tener al menos 8 caracteres"); return
-    }
+    if (!trimmedName || !trimmedSurname || !trimmedEmail) { toast.warning("Nombre, apellido y email son obligatorios"); return }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) { toast.warning("Formato de email no válido"); return }
+    if (newPassword && newPassword.length < 8) { toast.warning("La contraseña debe tener al menos 8 caracteres"); return }
 
     setCreating(true)
     try {
       const res = await fetch("/api/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: trimmedName,
-          surname: trimmedSurname,
-          email: trimmedEmail,
-          role: newRole,
-          password: newPassword || undefined,
-        }),
+        body: JSON.stringify({ name: trimmedName, surname: trimmedSurname, email: trimmedEmail, role: newRole, password: newPassword || undefined }),
       })
       const data = await res.json()
       if (!res.ok) { toast.error(data.error); return }
@@ -278,10 +215,9 @@ export default function UsersPage() {
     }
   }
 
+  // Guardar edición inline de nombre, apellido, email y rol
   const handleEdit = async (id: number) => {
-    if (!editName || !editSurname || !editEmail) {
-      toast.warning("Nombre, apellido y email son obligatorios"); return
-    }
+    if (!editName || !editSurname || !editEmail) { toast.warning("Nombre, apellido y email son obligatorios"); return }
     try {
       const res = await fetch("/api/users", {
         method: "PATCH",
@@ -298,6 +234,7 @@ export default function UsersPage() {
     }
   }
 
+  // Activar o desactivar usuario (toggle)
   const handleToggleActive = async (user: User) => {
     try {
       const res = await fetch("/api/users", {
@@ -314,6 +251,7 @@ export default function UsersPage() {
     }
   }
 
+  // Generar nueva contraseña aleatoria y mostrarla al admin
   const handleResetPassword = async () => {
     if (!resettingUser) return
     try {
@@ -330,6 +268,7 @@ export default function UsersPage() {
     }
   }
 
+  // Confirmar y ejecutar eliminación de usuario
   const handleDeleteConfirm = async () => {
     if (!deletingUser) return
     try {
@@ -351,26 +290,15 @@ export default function UsersPage() {
   return (
     <div style={{ width: "100%", padding: "2.5rem 4rem 3rem 3.5rem" }}>
       <div style={{ marginBottom: "2rem" }}>
-        <h2 className="text-2xl font-bold" style={{ color: "var(--color-text)" }}>
-          Usuarios
-        </h2>
-        <p className="mt-1 text-sm" style={{ color: "var(--color-text-muted)" }}>
-          Gestión de usuarios del sistema
-        </p>
+        <h2 className="text-2xl font-bold" style={{ color: "var(--color-text)" }}>Usuarios</h2>
+        <p className="mt-1 text-sm" style={{ color: "var(--color-text-muted)" }}>Gestión de usuarios del sistema</p>
       </div>
 
-      <div
-        className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
-        style={{ marginBottom: "1.5rem" }}
-      >
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between" style={{ marginBottom: "1.5rem" }}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <div
             className="flex items-center gap-2 rounded-lg px-3 py-2.5"
-            style={{
-              backgroundColor: "var(--color-surface)",
-              border: "1px solid var(--color-border)",
-              width: "260px",
-            }}
+            style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", width: "260px" }}
           >
             <Search size={14} color="var(--color-text-faint)" />
             <input
@@ -382,17 +310,9 @@ export default function UsersPage() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-
           <select
             className="rounded-lg outline-none"
-            style={{
-              backgroundColor: "var(--color-surface)",
-              border: "1px solid var(--color-border)",
-              color: "var(--color-text)",
-              fontSize: "0.9375rem",
-              padding: "0.625rem 2.5rem 0.625rem 1rem",
-              width: "200px",
-            }}
+            style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", color: "var(--color-text)", fontSize: "0.9375rem", padding: "0.625rem 2.5rem 0.625rem 1rem", width: "200px" }}
             value={roleFilter}
             onChange={(e) => setRoleFilter(e.target.value)}
           >
@@ -402,7 +322,6 @@ export default function UsersPage() {
             <option value="admin">Administradores</option>
           </select>
         </div>
-
         <BtnPrimary onClick={() => setOpenCreateModal(true)}>
           <Plus size={15} /> Nuevo usuario
         </BtnPrimary>
@@ -410,20 +329,12 @@ export default function UsersPage() {
 
       <div
         className="w-full overflow-x-auto rounded-xl"
-        style={{
-          backgroundColor: "var(--color-surface)",
-          border: "1px solid var(--color-border)",
-          boxShadow: "var(--shadow-sm)",
-        }}
+        style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", boxShadow: "var(--shadow-sm)" }}
       >
         {loading ? (
           <div className="space-y-3 p-6">
             {[1, 2, 3, 4].map((i) => (
-              <div
-                key={i}
-                className="h-10 rounded-lg animate-pulse"
-                style={{ backgroundColor: "var(--color-surface-offset)" }}
-              />
+              <div key={i} className="h-10 rounded-lg animate-pulse" style={{ backgroundColor: "var(--color-surface-offset)" }} />
             ))}
           </div>
         ) : filteredUsers.length === 0 ? (
@@ -434,9 +345,7 @@ export default function UsersPage() {
               <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
               <path d="M16 3.13a4 4 0 0 1 0 7.75" />
             </svg>
-            <p className="text-base font-medium" style={{ color: "var(--color-text-muted)" }}>
-              No hay usuarios que mostrar
-            </p>
+            <p className="text-base font-medium" style={{ color: "var(--color-text-muted)" }}>No hay usuarios que mostrar</p>
           </div>
         ) : (
           <table className="w-full">
@@ -446,14 +355,7 @@ export default function UsersPage() {
                   <th
                     key={i}
                     className="text-sm font-semibold uppercase tracking-wider"
-                    style={{
-                      color: "var(--color-text-muted)",
-                      paddingLeft: i === 0 ? "2rem" : undefined,
-                      textAlign: i === 6 ? "right" : "left",
-                      paddingRight: i === 6 ? "1.5rem" : "1rem",
-                      paddingTop: "1rem",
-                      paddingBottom: "1rem",
-                    }}
+                    style={{ color: "var(--color-text-muted)", paddingLeft: i === 0 ? "2rem" : undefined, textAlign: i === 6 ? "right" : "left", paddingRight: i === 6 ? "1.5rem" : "1rem", paddingTop: "1rem", paddingBottom: "1rem" }}
                   >
                     {h}
                   </th>
@@ -464,17 +366,13 @@ export default function UsersPage() {
               {filteredUsers.map((u, idx) => (
                 <tr
                   key={u.id}
-                  style={{
-                    borderBottom: idx < filteredUsers.length - 1 ? "1px solid var(--color-divider)" : "none",
-                  }}
+                  style={{ borderBottom: idx < filteredUsers.length - 1 ? "1px solid var(--color-divider)" : "none" }}
                 >
-                  <td
-                    className="py-3.5 text-base tabular-nums font-medium"
-                    style={{ color: "var(--color-text-faint)", paddingLeft: "2rem", paddingRight: "1rem" }}
-                  >
+                  <td className="py-3.5 text-base tabular-nums font-medium" style={{ color: "var(--color-text-faint)", paddingLeft: "2rem", paddingRight: "1rem" }}>
                     {u.id}
                   </td>
 
+                  {/* Modo edición inline */}
                   {editingId === u.id ? (
                     <>
                       <td className="py-2 pr-2">
@@ -502,19 +400,14 @@ export default function UsersPage() {
                       </td>
                     </>
                   ) : (
+                    // Modo lectura
                     <>
                       <td className="py-3.5 pr-4">
-                        <span className="text-base font-medium" style={{ color: "var(--color-text)" }}>
-                          {u.name} {u.surname}
-                        </span>
+                        <span className="text-base font-medium" style={{ color: "var(--color-text)" }}>{u.name} {u.surname}</span>
                       </td>
                       <td className="py-3.5 pr-4 text-base" style={{ color: "var(--color-text-muted)" }}>{u.email}</td>
                       <td className="py-3.5 pr-4">
-                        <Badge
-                          label={ROLE_LABELS[u.role] ?? u.role}
-                          bg={ROLE_STYLES[u.role]?.bg ?? "var(--color-surface-offset)"}
-                          color={ROLE_STYLES[u.role]?.color ?? "var(--color-text-muted)"}
-                        />
+                        <Badge label={ROLE_LABELS[u.role] ?? u.role} bg={ROLE_STYLES[u.role]?.bg ?? "var(--color-surface-offset)"} color={ROLE_STYLES[u.role]?.color ?? "var(--color-text-muted)"} />
                       </td>
                       <td className="py-3.5 pr-4">
                         <Badge
@@ -560,20 +453,16 @@ export default function UsersPage() {
         )}
       </div>
 
+      {/* Modal: crear usuario */}
       {openCreateModal && (
         <Modal onClose={() => setOpenCreateModal(false)}>
           <div className="flex items-center justify-between" style={{ marginBottom: "1.75rem" }}>
             <div>
-              <h3 className="text-lg font-semibold" style={{ color: "var(--color-text)" }}>
-                Nuevo usuario
-              </h3>
-              <p className="text-sm mt-0.5" style={{ color: "var(--color-text-muted)" }}>
-                Rellena los datos del nuevo usuario
-              </p>
+              <h3 className="text-lg font-semibold" style={{ color: "var(--color-text)" }}>Nuevo usuario</h3>
+              <p className="text-sm mt-0.5" style={{ color: "var(--color-text-muted)" }}>Rellena los datos del nuevo usuario</p>
             </div>
             <IconBtn icon={<X size={16} />} onClick={() => setOpenCreateModal(false)} />
           </div>
-
           <div className="flex flex-col gap-5">
             <div className="grid grid-cols-2 gap-4">
               <FormField label="Nombre" required>
@@ -594,30 +483,15 @@ export default function UsersPage() {
               </select>
             </FormField>
             <FormField label="Contraseña inicial">
-              <input
-                type="password"
-                style={inputStyle}
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Opcional — déjalo vacío si solo usará Google"
-                minLength={8}
-                maxLength={72}
-              />
-              <p
-                className="text-xs mt-1.5"
-                style={{ color: "var(--color-text-muted)" }}
-              >
+              <input type="password" style={inputStyle} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Opcional — déjalo vacío si solo usará Google" minLength={8} maxLength={72} />
+              {/* Si no se proporciona contraseña, el usuario solo podrá acceder por OAuth */}
+              <p className="text-xs mt-1.5" style={{ color: "var(--color-text-muted)" }}>
                 Si se deja vacío, el usuario solo podrá iniciar sesión con Google.
               </p>
             </FormField>
-
             <div style={{ height: "1px", backgroundColor: "var(--color-divider)" }} />
-
             <div className="flex justify-end gap-2">
-              <BtnGhost onClick={() => {
-                setOpenCreateModal(false)
-                setNewName(""); setNewSurname(""); setNewEmail(""); setNewRole("user"); setNewPassword("")
-              }}>
+              <BtnGhost onClick={() => { setOpenCreateModal(false); setNewName(""); setNewSurname(""); setNewEmail(""); setNewRole("user"); setNewPassword("") }}>
                 Cancelar
               </BtnGhost>
               <BtnPrimary onClick={handleCreate} disabled={creating}>
@@ -635,33 +509,23 @@ export default function UsersPage() {
         </Modal>
       )}
 
+      {/* Modal: resetear contraseña — muestra la nueva contraseña generada para que el admin la comparta */}
       {openResetModal && resettingUser && (
         <Modal onClose={() => { setOpenResetModal(false); setResettingUser(null); setGeneratedPassword("") }}>
           <div className="flex items-center justify-between" style={{ marginBottom: "1.75rem" }}>
             <div>
-              <h3 className="text-lg font-semibold" style={{ color: "var(--color-text)" }}>
-                Resetear contraseña
-              </h3>
-              <p className="text-sm mt-0.5" style={{ color: "var(--color-text-muted)" }}>
-                {resettingUser.name} {resettingUser.surname}
-              </p>
+              <h3 className="text-lg font-semibold" style={{ color: "var(--color-text)" }}>Resetear contraseña</h3>
+              <p className="text-sm mt-0.5" style={{ color: "var(--color-text-muted)" }}>{resettingUser.name} {resettingUser.surname}</p>
             </div>
             <IconBtn icon={<X size={16} />} onClick={() => { setOpenResetModal(false); setResettingUser(null); setGeneratedPassword("") }} />
           </div>
-
           <p className="text-sm" style={{ color: "var(--color-text-muted)", marginBottom: "1.25rem" }}>
             Se generará una nueva contraseña aleatoria para este usuario. Deberás compartírsela manualmente.
           </p>
-
           {generatedPassword ? (
             <div className="flex flex-col gap-3" style={{ marginBottom: "1.5rem" }}>
-              <p className="text-xs font-medium" style={{ color: "var(--color-text-muted)" }}>
-                Nueva contraseña generada:
-              </p>
-              <div
-                className="flex items-center gap-3 rounded-lg px-4 py-3"
-                style={{ backgroundColor: "var(--color-bg)", border: "1px solid var(--color-border)" }}
-              >
+              <p className="text-xs font-medium" style={{ color: "var(--color-text-muted)" }}>Nueva contraseña generada:</p>
+              <div className="flex items-center gap-3 rounded-lg px-4 py-3" style={{ backgroundColor: "var(--color-bg)", border: "1px solid var(--color-border)" }}>
                 <span className="flex-1 font-mono text-sm font-medium tracking-wider" style={{ color: "var(--color-text)" }}>
                   {generatedPassword}
                 </span>
@@ -671,18 +535,14 @@ export default function UsersPage() {
                   title="Copiar"
                 />
               </div>
-              <p className="text-xs" style={{ color: "var(--color-warning)" }}>
-                ⚠️ Copia esta contraseña ahora. No se volverá a mostrar.
-              </p>
+              <p className="text-xs" style={{ color: "var(--color-warning)" }}>⚠️ Copia esta contraseña ahora. No se volverá a mostrar.</p>
             </div>
           ) : (
             <p className="text-xs" style={{ color: "var(--color-text-faint)", marginBottom: "1.5rem" }}>
               Haz clic en "Generar" para crear la nueva contraseña.
             </p>
           )}
-
           <div style={{ height: "1px", backgroundColor: "var(--color-divider)", marginBottom: "1.5rem" }} />
-
           <div className="flex justify-end gap-2">
             <BtnGhost onClick={() => { setOpenResetModal(false); setResettingUser(null); setGeneratedPassword("") }}>
               {generatedPassword ? "Cerrar" : "Cancelar"}
@@ -696,36 +556,26 @@ export default function UsersPage() {
         </Modal>
       )}
 
+      {/* Modal: confirmar eliminación de usuario */}
       {openDeleteModal && deletingUser && (
         <Modal onClose={() => { setOpenDeleteModal(false); setDeletingUser(null) }}>
           <div className="flex items-center justify-between" style={{ marginBottom: "1.75rem" }}>
             <div>
-              <h3 className="text-lg font-semibold" style={{ color: "var(--color-text)" }}>
-                Eliminar usuario
-              </h3>
-              <p className="text-sm mt-0.5" style={{ color: "var(--color-text-muted)" }}>
-                Esta acción no se puede deshacer
-              </p>
+              <h3 className="text-lg font-semibold" style={{ color: "var(--color-text)" }}>Eliminar usuario</h3>
+              <p className="text-sm mt-0.5" style={{ color: "var(--color-text-muted)" }}>Esta acción no se puede deshacer</p>
             </div>
             <IconBtn icon={<X size={16} />} onClick={() => { setOpenDeleteModal(false); setDeletingUser(null) }} />
           </div>
-
           <p className="text-sm" style={{ color: "var(--color-text-muted)", marginBottom: "0.75rem" }}>
             ¿Estás seguro de que quieres eliminar a{" "}
-            <span className="font-semibold" style={{ color: "var(--color-text)" }}>
-              {deletingUser.name} {deletingUser.surname}
-            </span>?
+            <span className="font-semibold" style={{ color: "var(--color-text)" }}>{deletingUser.name} {deletingUser.surname}</span>?
           </p>
           <p className="text-xs" style={{ color: "var(--color-text-faint)", marginBottom: "1.75rem" }}>
             Si el usuario tiene tickets asociados no podrá eliminarse. Desactívalo en su lugar.
           </p>
-
           <div style={{ height: "1px", backgroundColor: "var(--color-divider)", marginBottom: "1.5rem" }} />
-
           <div className="flex justify-end gap-2">
-            <BtnGhost onClick={() => { setOpenDeleteModal(false); setDeletingUser(null) }}>
-              Cancelar
-            </BtnGhost>
+            <BtnGhost onClick={() => { setOpenDeleteModal(false); setDeletingUser(null) }}>Cancelar</BtnGhost>
             <BtnDanger onClick={handleDeleteConfirm}>
               <Trash2 size={14} /> Eliminar usuario
             </BtnDanger>

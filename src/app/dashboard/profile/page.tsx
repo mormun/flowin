@@ -5,6 +5,9 @@ import { toast } from "sonner"
 import { useSession } from "next-auth/react"
 import { User, Lock } from "lucide-react"
 
+// ───── Estilos de inputs ─────
+
+// Estilo base compartido para todos los inputs
 const baseInputStyle: React.CSSProperties = {
   width: "100%",
   padding: "0.625rem 0.875rem",
@@ -17,11 +20,13 @@ const baseInputStyle: React.CSSProperties = {
   transition: "border-color 150ms",
 }
 
+// Input dinámico: borde primario si tiene contenido, borde normal si está vacío
 const dynInput = (filled: boolean): React.CSSProperties => ({
   ...baseInputStyle,
   borderColor: filled ? "var(--color-primary)" : "var(--color-border)",
 })
 
+// Input deshabilitado (solo lectura, como el campo email)
 const disabledInputStyle: React.CSSProperties = {
   ...baseInputStyle,
   backgroundColor: "var(--color-surface-offset)",
@@ -33,6 +38,7 @@ const disabledInputStyle: React.CSSProperties = {
 export default function ProfilePage() {
   const { status } = useSession()
 
+  // Estado del formulario de datos personales
   const [name, setName] = useState("")
   const [surname, setSurname] = useState("")
   const [email, setEmail] = useState("")
@@ -40,31 +46,22 @@ export default function ProfilePage() {
   const [loadingProfile, setLoadingProfile] = useState(true)
   const [loadingSave, setLoadingSave] = useState(false)
 
+  // Estado del formulario de cambio de contraseña
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [loadingPassword, setLoadingPassword] = useState(false)
 
+  // Cargar datos del perfil al montar el componente
   useEffect(() => {
     const fetchProfile = async () => {
       if (status === "loading") return
-      if (status !== "authenticated") {
-        setLoadingProfile(false)
-        return
-      }
+      if (status !== "authenticated") { setLoadingProfile(false); return }
 
       try {
         setLoadingProfile(true)
-
-        const res = await fetch("/api/profile", {
-          method: "GET",
-          cache: "no-store",
-        })
-
+        const res = await fetch("/api/profile", { method: "GET", cache: "no-store" })
         const data = await res.json()
-        if (!res.ok) {
-          console.error(data.error)
-          return
-        }
+        if (!res.ok) { console.error(data.error); return }
 
         setName(data.name || "")
         setSurname(data.surname || "")
@@ -80,27 +77,19 @@ export default function ProfilePage() {
     fetchProfile()
   }, [status])
 
+  // Guardar cambios de nombre y apellidos
   const handleSave = async () => {
-    if (!name.trim()) {
-      toast.warning("El nombre no puede estar vacío")
-      return
-    }
+    if (!name.trim()) { toast.warning("El nombre no puede estar vacío"); return }
 
     try {
       setLoadingSave(true)
-
       const res = await fetch("/api/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, surname }),
       })
-
       const data = await res.json()
-      if (!res.ok) {
-        toast.error(data.error || "Error al guardar")
-        return
-      }
-
+      if (!res.ok) { toast.error(data.error || "Error al guardar"); return }
       toast.success("Datos guardados correctamente")
     } catch (error) {
       console.error("Error guardando perfil:", error)
@@ -110,35 +99,21 @@ export default function ProfilePage() {
     }
   }
 
+  // Actualizar contraseña con validación previa en cliente
   const handlePasswordUpdate = async () => {
-    if (!newPassword) {
-      toast.warning("Introduce una nueva contraseña")
-      return
-    }
-    if (newPassword.length < 8) {
-      toast.warning("La contraseña debe tener al menos 8 caracteres")
-      return
-    }
-    if (newPassword !== confirmPassword) {
-      toast.error("Las contraseñas no coinciden")
-      return
-    }
+    if (!newPassword) { toast.warning("Introduce una nueva contraseña"); return }
+    if (newPassword.length < 8) { toast.warning("La contraseña debe tener al menos 8 caracteres"); return }
+    if (newPassword !== confirmPassword) { toast.error("Las contraseñas no coinciden"); return }
 
     try {
       setLoadingPassword(true)
-
       const res = await fetch("/api/profile/password", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password: newPassword }),
       })
-
       const data = await res.json()
-      if (!res.ok) {
-        toast.error(data.error || "Error al actualizar la contraseña")
-        return
-      }
-
+      if (!res.ok) { toast.error(data.error || "Error al actualizar la contraseña"); return }
       toast.success("Contraseña actualizada correctamente")
       setNewPassword("")
       setConfirmPassword("")
@@ -162,28 +137,21 @@ export default function ProfilePage() {
       </div>
 
       <div className="flex flex-col gap-6">
+
+        {/* Sección: datos personales */}
         <div
           className="rounded-xl"
-          style={{
-            padding: "2.5rem 3rem",
-            backgroundColor: "var(--color-surface)",
-            border: "1px solid var(--color-border)",
-            boxShadow: "var(--shadow-sm)",
-          }}
+          style={{ padding: "2.5rem 3rem", backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", boxShadow: "var(--shadow-sm)" }}
         >
           <div className="flex items-center gap-2" style={{ marginBottom: "1.5rem" }}>
             <User size={16} style={{ color: "var(--color-text-muted)" }} />
-            <h3 className="text-base font-semibold" style={{ color: "var(--color-text)" }}>
-              Datos personales
-            </h3>
+            <h3 className="text-base font-semibold" style={{ color: "var(--color-text)" }}>Datos personales</h3>
           </div>
 
           <div className="flex flex-col gap-5">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium" style={{ color: "var(--color-text)" }}>
-                  Nombre
-                </label>
+                <label className="text-sm font-medium" style={{ color: "var(--color-text)" }}>Nombre</label>
                 <input
                   style={dynInput(name.length > 0)}
                   placeholder="Tu nombre"
@@ -193,11 +161,8 @@ export default function ProfilePage() {
                   onBlur={(e) => (e.currentTarget.style.borderColor = name ? "var(--color-primary)" : "var(--color-border)")}
                 />
               </div>
-
               <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium" style={{ color: "var(--color-text)" }}>
-                  Apellidos
-                </label>
+                <label className="text-sm font-medium" style={{ color: "var(--color-text)" }}>Apellidos</label>
                 <input
                   style={dynInput(surname.length > 0)}
                   placeholder="Tus apellidos"
@@ -210,26 +175,16 @@ export default function ProfilePage() {
             </div>
 
             <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium" style={{ color: "var(--color-text)" }}>
-                Email
-              </label>
-              <input
-                style={disabledInputStyle}
-                value={email}
-                disabled
-                readOnly
-              />
+              <label className="text-sm font-medium" style={{ color: "var(--color-text)" }}>Email</label>
+              {/* Email no editable: se gestiona desde el panel de administración */}
+              <input style={disabledInputStyle} value={email} disabled readOnly />
             </div>
 
             {registrationDate && (
               <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
                 Cuenta registrada el{" "}
                 <span style={{ color: "var(--color-text)" }}>
-                  {new Date(registrationDate).toLocaleDateString("es-ES", {
-                    day: "numeric",
-                    month: "long",
-                    year: "numeric",
-                  })}
+                  {new Date(registrationDate).toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" })}
                 </span>
               </p>
             )}
@@ -241,20 +196,9 @@ export default function ProfilePage() {
                 onClick={handleSave}
                 disabled={loadingSave || loadingProfile || status === "loading"}
                 className="flex items-center gap-2 rounded-full font-medium transition disabled:opacity-50 whitespace-nowrap"
-                style={{
-                  backgroundColor: "var(--color-primary)",
-                  color: "#fff",
-                  fontSize: "0.9375rem",
-                  padding: "0.55rem 1.5rem",
-                  border: "none",
-                  cursor: loadingSave ? "not-allowed" : "pointer",
-                }}
-                onMouseEnter={(e) =>
-                  !loadingSave && ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-primary-hover)")
-                }
-                onMouseLeave={(e) =>
-                  !loadingSave && ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-primary)")
-                }
+                style={{ backgroundColor: "var(--color-primary)", color: "#fff", fontSize: "0.9375rem", padding: "0.55rem 1.5rem", border: "none", cursor: loadingSave ? "not-allowed" : "pointer" }}
+                onMouseEnter={(e) => !loadingSave && ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-primary-hover)")}
+                onMouseLeave={(e) => !loadingSave && ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-primary)")}
               >
                 {loadingSave ? (
                   <>
@@ -263,36 +207,26 @@ export default function ProfilePage() {
                     </svg>
                     Guardando...
                   </>
-                ) : (
-                  "Guardar cambios"
-                )}
+                ) : "Guardar cambios"}
               </button>
             </div>
           </div>
         </div>
 
+        {/* Sección: cambiar contraseña */}
         <div
           className="rounded-xl"
-          style={{
-            padding: "2.5rem 3rem",
-            backgroundColor: "var(--color-surface)",
-            border: "1px solid var(--color-border)",
-            boxShadow: "var(--shadow-sm)",
-          }}
+          style={{ padding: "2.5rem 3rem", backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", boxShadow: "var(--shadow-sm)" }}
         >
           <div className="flex items-center gap-2" style={{ marginBottom: "1.5rem" }}>
             <Lock size={16} style={{ color: "var(--color-text-muted)" }} />
-            <h3 className="text-base font-semibold" style={{ color: "var(--color-text)" }}>
-              Cambiar contraseña
-            </h3>
+            <h3 className="text-base font-semibold" style={{ color: "var(--color-text)" }}>Cambiar contraseña</h3>
           </div>
 
           <div className="flex flex-col gap-5">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium" style={{ color: "var(--color-text)" }}>
-                  Nueva contraseña
-                </label>
+                <label className="text-sm font-medium" style={{ color: "var(--color-text)" }}>Nueva contraseña</label>
                 <input
                   type="password"
                   style={dynInput(newPassword.length > 0)}
@@ -303,18 +237,14 @@ export default function ProfilePage() {
                   onBlur={(e) => (e.currentTarget.style.borderColor = newPassword ? "var(--color-primary)" : "var(--color-border)")}
                 />
               </div>
-
               <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium" style={{ color: "var(--color-text)" }}>
-                  Confirmar contraseña
-                </label>
+                <label className="text-sm font-medium" style={{ color: "var(--color-text)" }}>Confirmar contraseña</label>
                 <input
                   type="password"
                   style={{
                     ...dynInput(confirmPassword.length > 0),
-                    ...(confirmPassword && newPassword !== confirmPassword
-                      ? { borderColor: "var(--color-error)" }
-                      : {}),
+                    // Borde rojo si las contraseñas no coinciden
+                    ...(confirmPassword && newPassword !== confirmPassword ? { borderColor: "var(--color-error)" } : {}),
                   }}
                   placeholder="Repite la contraseña"
                   value={confirmPassword}
@@ -329,9 +259,7 @@ export default function ProfilePage() {
                   }}
                 />
                 {confirmPassword && newPassword !== confirmPassword && (
-                  <p className="text-xs" style={{ color: "var(--color-error)" }}>
-                    Las contraseñas no coinciden
-                  </p>
+                  <p className="text-xs" style={{ color: "var(--color-error)" }}>Las contraseñas no coinciden</p>
                 )}
               </div>
             </div>
@@ -343,20 +271,9 @@ export default function ProfilePage() {
                 onClick={handlePasswordUpdate}
                 disabled={loadingPassword || loadingProfile || status === "loading"}
                 className="flex items-center gap-2 rounded-full font-medium transition disabled:opacity-50 whitespace-nowrap"
-                style={{
-                  backgroundColor: "var(--color-primary)",
-                  color: "#fff",
-                  fontSize: "0.9375rem",
-                  padding: "0.55rem 1.5rem",
-                  border: "none",
-                  cursor: loadingPassword ? "not-allowed" : "pointer",
-                }}
-                onMouseEnter={(e) =>
-                  !loadingPassword && ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-primary-hover)")
-                }
-                onMouseLeave={(e) =>
-                  !loadingPassword && ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-primary)")
-                }
+                style={{ backgroundColor: "var(--color-primary)", color: "#fff", fontSize: "0.9375rem", padding: "0.55rem 1.5rem", border: "none", cursor: loadingPassword ? "not-allowed" : "pointer" }}
+                onMouseEnter={(e) => !loadingPassword && ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-primary-hover)")}
+                onMouseLeave={(e) => !loadingPassword && ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-primary)")}
               >
                 {loadingPassword ? (
                   <>
@@ -365,13 +282,12 @@ export default function ProfilePage() {
                     </svg>
                     Actualizando...
                   </>
-                ) : (
-                  "Actualizar contraseña"
-                )}
+                ) : "Actualizar contraseña"}
               </button>
             </div>
           </div>
         </div>
+
       </div>
     </div>
   )

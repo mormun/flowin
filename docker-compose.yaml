@@ -1,16 +1,19 @@
 services:
+
+  # Base de datos PostgreSQL
   postgres:
     image: postgres:17-alpine
     container_name: flowin-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-flowin}
+      POSTGRES_USER:     ${POSTGRES_USER:-flowin}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-flowin}
-      POSTGRES_DB: ${POSTGRES_DB:-flowindb}
+      POSTGRES_DB:       ${POSTGRES_DB:-flowindb}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      # Script de inicialización: crea tablas y datos seed al primer arranque
       - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
       test:
@@ -22,29 +25,33 @@ services:
       timeout: 5s
       retries: 5
 
+  # Aplicación Next.js
   app:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: flowin-app
     restart: unless-stopped
+    # Esperar a que PostgreSQL esté listo antes de arrancar
     depends_on:
       postgres:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-flowin}:${POSTGRES_PASSWORD:-flowin}@postgres:5432/${POSTGRES_DB:-flowindb}
-      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
-      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      DATABASE_URL:        postgresql://${POSTGRES_USER:-flowin}:${POSTGRES_PASSWORD:-flowin}@postgres:5432/${POSTGRES_DB:-flowindb}
+      NEXTAUTH_URL:        ${NEXTAUTH_URL:-http://localhost:3000}
+      NEXTAUTH_SECRET:     ${NEXTAUTH_SECRET}
+      GOOGLE_CLIENT_ID:    ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
     ports:
       - "3000:3000"
     volumes:
+      # Persistencia de archivos subidos por usuarios
       - uploads_data:/app/public/uploads
-      - ./src:/app/src # ← AÑADIR
-      - ./public:/app/public # ← AÑADIR
-      - ./next.config.ts:/app/next.config.ts # ← AÑADIR (opcional)
+      # Volúmenes para hot reload en desarrollo
+      - ./src:/app/src
+      - ./public:/app/public
+      - ./next.config.ts:/app/next.config.ts
 
 volumes:
-  postgres_data:
-  uploads_data:
+  postgres_data:   # Datos de PostgreSQL
+  uploads_data:    # Archivos adjuntos de tickets

@@ -12,11 +12,13 @@ function useDocumentVisible() {
   const [visible, setVisible] = useState(true)
   useEffect(() => {
     const handleChange = () => setVisible(!document.hidden)
-    document.addEventListener('visibilitychange', handleChange)
-    return () => document.removeEventListener('visibilitychange', handleChange)
+    document.addEventListener("visibilitychange", handleChange)
+    return () => document.removeEventListener("visibilitychange", handleChange)
   }, [])
   return visible
 }
+
+// ───── Tipos ─────
 
 type Ticket = {
   id: number
@@ -43,11 +45,13 @@ type Comment = {
   user?: { name: string; surname: string; role?: string; email?: string }
 }
 
+// ───── Estilos y constantes ─────
+
 const PRIORITY_STYLES: Record<string, { bg: string; color: string }> = {
   Crítica: { bg: "var(--color-error-light)", color: "var(--color-error)" },
-  Alta: { bg: "var(--color-warning-light)", color: "var(--color-warning)" },
-  Media: { bg: "#fef9c3", color: "#854d0e" },
-  Baja: { bg: "var(--color-success-light)", color: "var(--color-success)" },
+  Alta:    { bg: "var(--color-warning-light)", color: "var(--color-warning)" },
+  Media:   { bg: "#fef9c3", color: "#854d0e" },
+  Baja:    { bg: "var(--color-success-light)", color: "var(--color-success)" },
 }
 
 const STATUS_LABELS: Record<number, string> = {
@@ -64,6 +68,7 @@ const STATUS_STYLES: Record<number, { bg: string; color: string }> = {
   6: { bg: "var(--color-surface-offset)", color: "var(--color-text-muted)" },
 }
 
+// Estilo para etiquetas de sección (cabeceras pequeñas en mayúsculas)
 const sectionLabelStyle: React.CSSProperties = {
   fontSize: "0.6875rem",
   fontWeight: 700,
@@ -74,6 +79,7 @@ const sectionLabelStyle: React.CSSProperties = {
   paddingLeft: "0.25rem",
 }
 
+// Estilo para etiquetas de metadatos del ticket
 const metaLabelStyle: React.CSSProperties = {
   fontSize: "0.6875rem",
   fontWeight: 600,
@@ -82,6 +88,9 @@ const metaLabelStyle: React.CSSProperties = {
   color: "var(--color-text)",
 }
 
+// ───── Componentes UI reutilizables ─────
+
+// Muestra una fecha y hora formateada, o "—" si no hay valor
 const DateTimeValue = ({ iso }: { iso?: string | null }) => {
   if (!iso) return <span className="text-sm" style={{ color: "var(--color-text-faint)" }}>—</span>
   const date = new Date(iso).toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" })
@@ -104,6 +113,7 @@ const Badge = ({ label, bg, color }: { label: string; bg: string; color: string 
   </span>
 )
 
+// Columna de metadato con etiqueta y valor
 const MetaCol = ({ label, children }: { label: string; children: React.ReactNode }) => (
   <div className="flex flex-col gap-1">
     <span style={metaLabelStyle}>{label}</span>
@@ -111,7 +121,10 @@ const MetaCol = ({ label, children }: { label: string; children: React.ReactNode
   </div>
 )
 
-const Modal = ({ open, onClose, title, subtitle, children }: { open: boolean; onClose: () => void; title: string; subtitle?: string; children: React.ReactNode }) =>
+// Modal genérico con título, subtítulo y contenido
+const Modal = ({ open, onClose, title, subtitle, children }: {
+  open: boolean; onClose: () => void; title: string; subtitle?: string; children: React.ReactNode
+}) =>
   open ? (
     <div className="fixed inset-0 flex items-center justify-center z-50" style={{ backgroundColor: "rgba(0,0,0,0.6)" }} onClick={onClose}>
       <div className="rounded-2xl flex flex-col" style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", boxShadow: "var(--shadow-lg)", padding: "1.75rem 2rem", maxWidth: "440px", width: "90%" }} onClick={(e) => e.stopPropagation()}>
@@ -129,12 +142,14 @@ const Modal = ({ open, onClose, title, subtitle, children }: { open: boolean; on
     </div>
   ) : null
 
+// Select genérico para modales
 const ModalSelect = ({ value, onChange, children }: { value: string | number; onChange: (v: string) => void; children: React.ReactNode }) => (
   <select value={value} onChange={(e) => onChange(e.target.value)} className="w-full rounded-lg outline-none" style={{ padding: "0.75rem 1rem", fontSize: "0.9375rem", backgroundColor: "var(--color-bg)", border: "1px solid var(--color-border)", color: "var(--color-text)", marginTop: "1rem" }}>
     {children}
   </select>
 )
 
+// Footer estándar de modal con botones Cancelar y Confirmar
 const ModalFooter = ({ onClose, onConfirm, confirmLabel }: { onClose: () => void; onConfirm: () => void; confirmLabel: string }) => (
   <div className="flex justify-end gap-2" style={{ marginTop: "1.5rem" }}>
     <button onClick={onClose} className="rounded-lg text-sm font-medium transition" style={{ backgroundColor: "transparent", border: "none", color: "var(--color-text-muted)", cursor: "pointer", padding: "0.5rem 1rem" }} onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-surface-offset)")} onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "transparent")}>
@@ -146,38 +161,33 @@ const ModalFooter = ({ onClose, onConfirm, confirmLabel }: { onClose: () => void
   </div>
 )
 
-const IconBtn = ({ title, onClick, color, hoverBg, children }: { title: string; onClick: () => void; color: string; hoverBg: string; children: React.ReactNode }) => {
-  return (
-    <Tooltip text={title}>
-      <button
-        onClick={onClick}
-        className="rounded-full transition flex items-center justify-center"
-        style={{
-          width: "40px",
-          height: "40px",
-          flexShrink: 0,
-          border: `2px solid ${color}`,
-          color,
-          background: "none",
-          cursor: "pointer"
-        }}
-        onMouseEnter={(e) => (e.currentTarget as HTMLElement).style.backgroundColor = hoverBg}
-        onMouseLeave={(e) => (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"}
-      >
-        {children}
-      </button>
-    </Tooltip>
-  )
-}
+// Botón icono circular con tooltip y color configurable
+const IconBtn = ({ title, onClick, color, hoverBg, children }: {
+  title: string; onClick: () => void; color: string; hoverBg: string; children: React.ReactNode
+}) => (
+  <Tooltip text={title}>
+    <button
+      onClick={onClick}
+      className="rounded-full transition flex items-center justify-center"
+      style={{ width: "40px", height: "40px", flexShrink: 0, border: `2px solid ${color}`, color, background: "none", cursor: "pointer" }}
+      onMouseEnter={(e) => (e.currentTarget as HTMLElement).style.backgroundColor = hoverBg}
+      onMouseLeave={(e) => (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"}
+    >
+      {children}
+    </button>
+  </Tooltip>
+)
 
+// ───── Estilos de burbuja de chat por rol ─────
 const BUBBLE = {
-  self: { align: "flex-end" as const, bg: "var(--color-primary)", color: "#fff", nameColor: "#fff", br: "1rem 1rem 0.25rem 1rem" },
-  tech: { align: "flex-start" as const, bg: "#dae8f7", color: "#1b3a57", nameColor: "#2563eb", br: "1rem 1rem 1rem 0.25rem" },
-  admin: { align: "flex-start" as const, bg: "#e7d7c4", color: "#2b1f10", nameColor: "#da7101", br: "1rem 1rem 1rem 0.25rem" },
-  user: { align: "flex-start" as const, bg: "#ebebeb", color: "#28251d", nameColor: "#7a7974", br: "1rem 1rem 1rem 0.25rem" },
-  system: { align: "center" as const, bg: "#e6e4df", color: "#7a7974", nameColor: "#bab9b4", br: "9999px" },
+  self:   { align: "flex-end" as const,   bg: "var(--color-primary)", color: "#fff",     nameColor: "#fff",     br: "1rem 1rem 0.25rem 1rem" },
+  tech:   { align: "flex-start" as const, bg: "#dae8f7",              color: "#1b3a57",  nameColor: "#2563eb",  br: "1rem 1rem 1rem 0.25rem" },
+  admin:  { align: "flex-start" as const, bg: "#e7d7c4",              color: "#2b1f10",  nameColor: "#da7101",  br: "1rem 1rem 1rem 0.25rem" },
+  user:   { align: "flex-start" as const, bg: "#ebebeb",              color: "#28251d",  nameColor: "#7a7974",  br: "1rem 1rem 1rem 0.25rem" },
+  system: { align: "center" as const,     bg: "#e6e4df",              color: "#7a7974",  nameColor: "#bab9b4",  br: "9999px" },
 }
 
+// Burbuja de chat: mensajes de usuario o notificaciones de sistema
 function ChatBubble({ comment, isSelf }: { comment: Comment; isSelf: boolean }) {
   const rawRole = comment.user?.role?.toLowerCase() ?? "user"
   const bubbleRole = comment.is_system
@@ -190,11 +200,11 @@ function ChatBubble({ comment, isSelf }: { comment: Comment; isSelf: boolean }) 
 
   const s = BUBBLE[bubbleRole]
   const authorLabel = comment.is_system ? "Sistema" : comment.user ? `${comment.user.name} ${comment.user.surname}` : "—"
-
   const timestamp = new Date(comment.created_at).toLocaleString("es-ES", {
     hour: "2-digit", minute: "2-digit", day: "numeric", month: "short",
   })
 
+  // Mensaje de sistema: pill centrado
   if (bubbleRole === "system") {
     return (
       <div className="flex flex-col items-center gap-1">
@@ -206,6 +216,7 @@ function ChatBubble({ comment, isSelf }: { comment: Comment; isSelf: boolean }) 
     )
   }
 
+  // Mensaje de usuario: burbuja alineada según quién habla
   return (
     <div className="flex flex-col" style={{ alignItems: s.align }}>
       <div style={{ backgroundColor: s.bg, color: s.color, maxWidth: "68%", minWidth: "120px", borderRadius: s.br, padding: "0.75rem 1.125rem" }}>
@@ -223,47 +234,39 @@ function ChatBubble({ comment, isSelf }: { comment: Comment; isSelf: boolean }) 
   )
 }
 
-// ───── Mapa de estados por nombre (evita hardcoded IDs) ─────
+// ───── Máquina de estados ─────
+
+// Mapa de estados por nombre para evitar IDs hardcodeados
 const STATUS_IDS: Record<string, number> = {
-  Nuevo: 1,
-  "En Proceso": 2,
-  Pendiente: 3,
-  Solucionado: 4,
-  Cerrado: 5,
-  Cancelado: 6,
+  Nuevo: 1, "En Proceso": 2, Pendiente: 3,
+  Solucionado: 4, Cerrado: 5, Cancelado: 6,
 }
 
-// ───── Transiciones de estado permitidas según la matriz ─────
+// Devuelve las transiciones de estado disponibles según rol y contexto del usuario
 function getAvailableTransitions(
   currentStatusId: number,
   role: "user" | "tech" | "admin",
   isCreator: boolean,
   isAssignedToMe: boolean
 ): { id: number; label: string }[] {
-  const NUEVO = STATUS_IDS["Nuevo"]
+  const NUEVO      = STATUS_IDS["Nuevo"]
   const EN_PROCESO = STATUS_IDS["En Proceso"]
-  const PENDIENTE = STATUS_IDS["Pendiente"]
+  const PENDIENTE  = STATUS_IDS["Pendiente"]
   const SOLUCIONADO = STATUS_IDS["Solucionado"]
-  const CERRADO = STATUS_IDS["Cerrado"]
-  const CANCELADO = STATUS_IDS["Cancelado"]
+  const CERRADO    = STATUS_IDS["Cerrado"]
+  const CANCELADO  = STATUS_IDS["Cancelado"]
 
-  // Estados finales: ninguna transición
+  // Estados finales: sin transiciones posibles
   if (currentStatusId === CERRADO || currentStatusId === CANCELADO) return []
 
-  // Nuevo
+  // Desde Nuevo: solo cancelar
   if (currentStatusId === NUEVO) {
-    if (role === "user" && isCreator) {
-
-      return [{ id: CANCELADO, label: "Cancelar ticket" }]
-    }
-    if (role === "tech" || role === "admin") {
-      return [{ id: CANCELADO, label: "Cancelar ticket" }]
-    }
-
+    if (role === "user" && isCreator) return [{ id: CANCELADO, label: "Cancelar ticket" }]
+    if (role === "tech" || role === "admin") return [{ id: CANCELADO, label: "Cancelar ticket" }]
     return []
   }
 
-  // En Proceso
+  // Desde En Proceso: pendiente, solucionado o cancelar
   if (currentStatusId === EN_PROCESO) {
     if (role === "user") return []
     if (role === "tech" && !isAssignedToMe) return []
@@ -277,7 +280,7 @@ function getAvailableTransitions(
     return []
   }
 
-  // Pendiente
+  // Desde Pendiente: reanudar o cancelar
   if (currentStatusId === PENDIENTE) {
     if (role === "user") return []
     if (role === "tech" && !isAssignedToMe) return []
@@ -290,7 +293,7 @@ function getAvailableTransitions(
     return []
   }
 
-  // Solucionado
+  // Desde Solucionado: el creador puede aceptar (cerrar) o rechazar (volver a En Proceso)
   if (currentStatusId === SOLUCIONADO) {
     if (role === "user" && isCreator) {
       return [
@@ -304,16 +307,24 @@ function getAvailableTransitions(
   return []
 }
 
+// ───── Componente principal ─────
+
 export default function TicketDetailPage() {
   const params = useParams()
   const router = useRouter()
   const { data: session } = useSession()
   const id = Array.isArray(params.id) ? params.id[0] : params.id
   const chatEndRef = useRef<HTMLDivElement>(null)
+
+  // Estado del usuario actual
   const [role, setRole] = useState<"user" | "tech" | "admin" | null>(null)
   const [currentUserId, setCurrentUserId] = useState<number | null>(null)
+
+  // Estado del ticket y carga
   const [ticket, setTicket] = useState<Ticket | null>(null)
   const [loading, setLoading] = useState(true)
+
+  // Estado de los modales de acción
   const [newStatus, setNewStatus] = useState<number | null>(null)
   const [openStatusModal, setOpenStatusModal] = useState(false)
   const [newPriority, setNewPriority] = useState("")
@@ -322,9 +333,14 @@ export default function TicketDetailPage() {
   const [selectedTech, setSelectedTech] = useState<number | null>(null)
   const [openAssignModal, setOpenAssignModal] = useState(false)
   const [openSolutionModal, setOpenSolutionModal] = useState(false)
+
+  // Estado del chat de comentarios
   const [comments, setComments] = useState<Comment[]>([])
   const [newComment, setNewComment] = useState("")
 
+  const isVisible = useDocumentVisible()
+
+  // Extraer rol e ID del usuario desde la sesión
   useEffect(() => {
     const user = session?.user as any
     const userRole = user?.role as "user" | "tech" | "admin" | undefined
@@ -332,8 +348,7 @@ export default function TicketDetailPage() {
     setCurrentUserId(user?.id ? Number(user.id) : null)
   }, [session])
 
-  const isVisible = useDocumentVisible()
-
+  // Cargar ticket con auto-refresh cada 20s (pausa si el usuario está escribiendo)
   useEffect(() => {
     if (!id) return
     const loadTicket = async () => {
@@ -358,16 +373,16 @@ export default function TicketDetailPage() {
 
     loadTicket()
 
-    // Auto-refresh cada 20s si visible y NO está editando comentario
     if (!isVisible) return
     const interval = setInterval(() => {
-      if (document.hidden || newComment.trim()) return // Pausa si está escribiendo
+      if (document.hidden || newComment.trim()) return
       loadTicket()
     }, 20000)
 
     return () => clearInterval(interval)
   }, [id, isVisible, newComment])
 
+  // Cargar comentarios con auto-refresh cada 20s (pausa si el usuario está escribiendo)
   useEffect(() => {
     if (!id) return
     const loadComments = async () => {
@@ -378,7 +393,6 @@ export default function TicketDetailPage() {
 
     loadComments()
 
-    // Auto-refresh comentarios cada 20s si visible y NO está editando
     if (!isVisible) return
     const interval = setInterval(() => {
       if (document.hidden || newComment.trim()) return
@@ -388,13 +402,16 @@ export default function TicketDetailPage() {
     return () => clearInterval(interval)
   }, [id, isVisible, newComment])
 
+  // Scroll automático al último comentario cuando llegan nuevos mensajes
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }) }, [comments])
 
+  // Cargar lista de técnicos activos (bajo demanda al abrir modal de asignación)
   const loadTechnicians = async () => {
     const res = await fetch("/api/users/tech")
     setTechnicians(await res.json())
   }
 
+  // Helper: enviar PATCH al endpoint de actualización de tickets
   const patch = (body: object) =>
     fetch("/api/tickets/update", {
       method: "PATCH",
@@ -402,6 +419,7 @@ export default function TicketDetailPage() {
       body: JSON.stringify({ id: ticket!.id, ...body }),
     })
 
+  // Recargar comentarios desde la API
   const refreshComments = async () => {
     const res = await fetch(`/api/tickets/comments/${id}`)
     if (!res.ok) return
@@ -409,6 +427,7 @@ export default function TicketDetailPage() {
     setComments(Array.isArray(data) ? data : [])
   }
 
+  // Devuelve el nombre de la categoría, indicando si está desactivada
   const getCategoryName = () => {
     if (!ticket?.categories) return "Sin categoría"
     return ticket.categories.active
@@ -416,6 +435,7 @@ export default function TicketDetailPage() {
       : `${ticket.categories.name} (desactivada)`
   }
 
+  // Insertar un comentario de sistema (cambios de estado, asignaciones, etc.)
   const addSystemComment = async (content: string) => {
     await fetch("/api/tickets/comments", {
       method: "POST",
@@ -426,6 +446,7 @@ export default function TicketDetailPage() {
     await refreshComments()
   }
 
+  // Actualizar estado del ticket desde el modal
   const handleUpdate = async () => {
     if (!ticket || newStatus === null) return
     await patch({ status_id: newStatus })
@@ -435,6 +456,7 @@ export default function TicketDetailPage() {
     toast.success("Estado actualizado")
   }
 
+  // Actualizar prioridad del ticket desde el modal
   const handlePriorityUpdate = async () => {
     if (!ticket || !newPriority) return
     await patch({ priority: newPriority })
@@ -444,6 +466,7 @@ export default function TicketDetailPage() {
     toast.success("Prioridad actualizada")
   }
 
+  // Asignar técnico al ticket y refrescar datos desde la API
   const handleAssign = async () => {
     if (!ticket || !selectedTech) return
     await patch({ assigned_to: selectedTech })
@@ -462,6 +485,7 @@ export default function TicketDetailPage() {
     toast.success("Técnico asignado")
   }
 
+  // Enviar comentario de usuario al chat
   const handleAddComment = async () => {
     if (!newComment.trim()) return
     const userEmail = session?.user?.email
@@ -479,6 +503,7 @@ export default function TicketDetailPage() {
     setNewComment("")
   }
 
+  // Aceptar solución: cierra el ticket
   const handleAcceptSolution = async () => {
     if (!ticket) return
     await patch({ status_id: STATUS_IDS["Cerrado"] })
@@ -488,6 +513,7 @@ export default function TicketDetailPage() {
     toast.success("Solución aceptada. Ticket cerrado.")
   }
 
+  // Rechazar solución: vuelve el ticket a En Proceso
   const handleRejectSolution = async () => {
     if (!ticket) return
     await patch({ status_id: STATUS_IDS["En Proceso"] })
@@ -497,36 +523,35 @@ export default function TicketDetailPage() {
     toast.error("Solución rechazada. El ticket vuelve a En Proceso.")
   }
 
+  // Estado de carga
   if (loading) return (
     <div style={{ width: "100%", padding: "2rem 3rem 2rem 2.5rem" }} className="flex items-center gap-2">
-      <svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>
+      <svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+      </svg>
       <span className="text-sm" style={{ color: "var(--color-text-muted)" }}>Cargando ticket…</span>
     </div>
   )
   if (!ticket || !role) return null
 
+  // ───── Variables derivadas del estado ─────
   const isCreator = ticket.created_by === currentUserId
   const isAssignedToMe = ticket.assigned_to === currentUserId
   const allowedTransitions = getAvailableTransitions(ticket.status_id, role, isCreator, isAssignedToMe)
-
   const isFinalStatus = ticket.status_id === STATUS_IDS["Cerrado"] || ticket.status_id === STATUS_IDS["Cancelado"]
   const isActiveStatus = ticket.status_id === STATUS_IDS["Nuevo"] || ticket.status_id === STATUS_IDS["En Proceso"] || ticket.status_id === STATUS_IDS["Pendiente"]
 
-  // Lógica de visibilidad de botones
+  // Visibilidad de botones de acción según rol y estado
   const showChangeStatusBtn = allowedTransitions.length > 0
-  const showChangePriorityBtn =
-    isActiveStatus &&
-    (role === "admin" || (role === "tech" && (isAssignedToMe || ticket.assigned_to === null)))
-  const showAssignTechBtn =
-    isActiveStatus &&
-    (role === "admin" || (role === "tech" && (isAssignedToMe || ticket.assigned_to === null)))
-
+  const showChangePriorityBtn = isActiveStatus && (role === "admin" || (role === "tech" && (isAssignedToMe || ticket.assigned_to === null)))
+  const showAssignTechBtn = isActiveStatus && (role === "admin" || (role === "tech" && (isAssignedToMe || ticket.assigned_to === null)))
   const showSolutionBtn = role === "user" && isCreator && ticket.status_id === STATUS_IDS["Solucionado"]
-
   const showActionsPanel = showChangeStatusBtn || showChangePriorityBtn || showAssignTechBtn || showSolutionBtn
 
   return (
     <div style={{ width: "100%", padding: "0 3rem 2rem 2.5rem" }}>
+
+      {/* Botón volver */}
       <div className="flex items-center" style={{ marginBottom: "1.25rem" }}>
         <button
           onClick={() => router.back()}
@@ -540,6 +565,7 @@ export default function TicketDetailPage() {
         </button>
       </div>
 
+      {/* Fila superior: metadatos del ticket + panel de acciones */}
       <div className="flex items-stretch gap-5" style={{ marginBottom: "1.25rem" }}>
         <div className="flex flex-col flex-1">
           <p style={sectionLabelStyle}>Detalles del ticket</p>
@@ -569,6 +595,7 @@ export default function TicketDetailPage() {
           </div>
         </div>
 
+        {/* Panel de acciones: solo visible si hay acciones disponibles */}
         {showActionsPanel && (
           <div className="flex flex-col" style={{ minWidth: "fit-content" }}>
             <p style={sectionLabelStyle}>Acciones</p>
@@ -598,6 +625,7 @@ export default function TicketDetailPage() {
         )}
       </div>
 
+      {/* Descripción del ticket */}
       <div style={{ marginBottom: "1.25rem" }}>
         <p style={sectionLabelStyle}>Descripción del ticket</p>
         <div className="rounded-xl" style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", boxShadow: "var(--shadow-sm)", padding: "2rem" }}>
@@ -606,20 +634,13 @@ export default function TicketDetailPage() {
         </div>
       </div>
 
+      {/* Archivos adjuntos (solo si existen) */}
       {ticket.attachments && ticket.attachments.length > 0 && (
         <div style={{ marginBottom: "1.25rem" }}>
           <p style={sectionLabelStyle}>Archivo adjunto</p>
-          <div
-            className="rounded-xl"
-            style={{
-              backgroundColor: "var(--color-surface)",
-              border: "1px solid var(--color-border)",
-              boxShadow: "var(--shadow-sm)",
-              padding: "1rem 1.75rem",
-            }}
-          >
+          <div className="rounded-xl" style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", boxShadow: "var(--shadow-sm)", padding: "1rem 1.75rem" }}>
             {ticket.attachments.map((att) => (
-              <a
+              
                 key={att.id}
                 href={`/api/attachments/download/${att.id}`}
                 download={att.filename ?? "archivo"}
@@ -633,12 +654,8 @@ export default function TicketDetailPage() {
                   backgroundColor: "var(--color-primary-light)",
                   border: "1px solid color-mix(in oklab, var(--color-primary) 25%, transparent)",
                 }}
-                onMouseEnter={(e) =>
-                  ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-primary-highlight)")
-                }
-                onMouseLeave={(e) =>
-                  ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-primary-light)")
-                }
+                onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-primary-highlight)")}
+                onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-primary-light)")}
               >
                 <Paperclip size={14} />
                 {att.filename ?? "Descargar archivo"}
@@ -648,6 +665,7 @@ export default function TicketDetailPage() {
         </div>
       )}
 
+      {/* Chat de seguimiento del ticket */}
       <div style={{ marginBottom: "1.25rem" }}>
         <div style={{ marginBottom: "0.625rem", paddingLeft: "0.25rem" }}>
           <span style={sectionLabelStyle}>Seguimiento del ticket</span>
@@ -665,6 +683,8 @@ export default function TicketDetailPage() {
             )}
             <div ref={chatEndRef} />
           </div>
+
+          {/* Input de nuevo comentario */}
           <div className="flex items-center gap-3 px-6 py-4" style={{ borderTop: "1px solid var(--color-border)" }}>
             <input
               className="flex-1 rounded-lg outline-none"
@@ -689,9 +709,7 @@ export default function TicketDetailPage() {
               onClick={handleAddComment}
               className="flex items-center justify-center rounded-full transition"
               style={{
-                width: "40px",
-                height: "40px",
-                flexShrink: 0,
+                width: "40px", height: "40px", flexShrink: 0,
                 backgroundColor: !isFinalStatus && newComment.trim() ? "var(--color-primary)" : "var(--color-surface-offset)",
                 color: !isFinalStatus && newComment.trim() ? "#fff" : "var(--color-text-faint)",
                 border: "none",
@@ -707,6 +725,8 @@ export default function TicketDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Modal: cambiar estado */}
       <Modal open={openStatusModal} onClose={() => setOpenStatusModal(false)} title="Cambiar estado" subtitle="Selecciona el nuevo estado del ticket">
         <ModalSelect value={newStatus === null ? "" : newStatus} onChange={(v) => { setNewStatus(Number(v)) }}>
           <option value="">Selecciona estado</option>
@@ -715,6 +735,7 @@ export default function TicketDetailPage() {
         <ModalFooter onClose={() => setOpenStatusModal(false)} onConfirm={handleUpdate} confirmLabel="Actualizar estado" />
       </Modal>
 
+      {/* Modal: cambiar prioridad */}
       <Modal open={openPriorityModal} onClose={() => setOpenPriorityModal(false)} title="Cambiar prioridad" subtitle="Selecciona la nueva prioridad del ticket">
         <ModalSelect value={newPriority} onChange={setNewPriority}>
           <option value="Baja">Baja</option>
@@ -725,6 +746,7 @@ export default function TicketDetailPage() {
         <ModalFooter onClose={() => setOpenPriorityModal(false)} onConfirm={handlePriorityUpdate} confirmLabel="Actualizar prioridad" />
       </Modal>
 
+      {/* Modal: asignar técnico */}
       <Modal open={openAssignModal} onClose={() => { setOpenAssignModal(false); setSelectedTech(null) }} title="Asignar técnico" subtitle="Elige el técnico responsable de este ticket">
         <ModalSelect value={selectedTech ?? ""} onChange={(v) => setSelectedTech(Number(v))}>
           <option value="">Selecciona técnico</option>
@@ -733,6 +755,7 @@ export default function TicketDetailPage() {
         <ModalFooter onClose={() => { setOpenAssignModal(false); setSelectedTech(null) }} onConfirm={handleAssign} confirmLabel="Asignar" />
       </Modal>
 
+      {/* Modal: ver y aceptar/rechazar solución */}
       <Modal open={openSolutionModal} onClose={() => setOpenSolutionModal(false)} title="Solución propuesta" subtitle="Revisa los mensajes y decide si aceptas la solución">
         <div className="flex flex-col gap-3 overflow-y-auto rounded-lg" style={{ maxHeight: "220px", backgroundColor: "var(--color-bg)", border: "1px solid var(--color-border)", padding: "0.875rem", marginBottom: "1.5rem" }}>
           {comments.length === 0
@@ -746,35 +769,18 @@ export default function TicketDetailPage() {
         </div>
         <div style={{ height: "1px", backgroundColor: "var(--color-divider)", marginBottom: "1.5rem" }} />
         <div className="flex justify-end gap-2">
-          <button
-            onClick={() => setOpenSolutionModal(false)}
-            className="rounded-lg text-sm font-medium transition"
-            style={{ backgroundColor: "transparent", border: "none", color: "var(--color-text-muted)", cursor: "pointer", padding: "0.5rem 1rem" }}
-            onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-surface-offset)")}
-            onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "transparent")}
-          >
+          <button onClick={() => setOpenSolutionModal(false)} className="rounded-lg text-sm font-medium transition" style={{ backgroundColor: "transparent", border: "none", color: "var(--color-text-muted)", cursor: "pointer", padding: "0.5rem 1rem" }} onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-surface-offset)")} onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "transparent")}>
             Cancelar
           </button>
-          <button
-            onClick={handleRejectSolution}
-            className="rounded-full text-sm font-medium transition"
-            style={{ backgroundColor: "var(--color-error)", color: "#fff", border: "none", cursor: "pointer", padding: "0.5rem 1.25rem" }}
-            onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.opacity = "0.9")}
-            onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.opacity = "1")}
-          >
+          <button onClick={handleRejectSolution} className="rounded-full text-sm font-medium transition" style={{ backgroundColor: "var(--color-error)", color: "#fff", border: "none", cursor: "pointer", padding: "0.5rem 1.25rem" }} onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.opacity = "0.9")} onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.opacity = "1")}>
             Rechazar
           </button>
-          <button
-            onClick={handleAcceptSolution}
-            className="rounded-full text-sm font-medium transition"
-            style={{ backgroundColor: "var(--color-success)", color: "#fff", border: "none", cursor: "pointer", padding: "0.5rem 1.25rem" }}
-            onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.opacity = "0.9")}
-            onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.opacity = "1")}
-          >
+          <button onClick={handleAcceptSolution} className="rounded-full text-sm font-medium transition" style={{ backgroundColor: "var(--color-success)", color: "#fff", border: "none", cursor: "pointer", padding: "0.5rem 1.25rem" }} onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.opacity = "0.9")} onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.opacity = "1")}>
             Aceptar solución
           </button>
         </div>
       </Modal>
+
     </div>
   )
 }

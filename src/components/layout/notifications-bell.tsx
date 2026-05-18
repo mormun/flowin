@@ -14,8 +14,10 @@ type Notification = {
   ticket: { id: number; title: string } | null
 }
 
+// Intervalo de polling para refrescar notificaciones (20 segundos)
 const POLL_INTERVAL_MS = 20000
 
+// Formatea una fecha ISO en texto relativo legible (ej: "hace 5 min")
 function timeAgo(date: string): string {
   const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000)
   if (seconds < 60) return "ahora"
@@ -36,9 +38,10 @@ export function NotificationsBell() {
   const [unreadCount, setUnreadCount] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  // Solo se muestran las no leídas
+  // Solo se muestran las notificaciones no leídas en el dropdown
   const visibleNotifications = notifications.filter((n) => !n.read)
 
+  // Polling de notificaciones cada 20s mientras el usuario está autenticado
   useEffect(() => {
     if (status !== "authenticated") return
 
@@ -50,7 +53,7 @@ export function NotificationsBell() {
         setNotifications(data.notifications ?? [])
         setUnreadCount(data.unread_count ?? 0)
       } catch {
-        // Silencioso: no queremos toasts ruidosos por el polling
+        // Silencioso: evitar toasts ruidosos durante el polling
       }
     }
 
@@ -59,6 +62,7 @@ export function NotificationsBell() {
     return () => clearInterval(interval)
   }, [status])
 
+  // Cerrar el dropdown al hacer clic fuera del componente
   useEffect(() => {
     if (!open) return
     const handleClick = (e: MouseEvent) => {
@@ -70,45 +74,46 @@ export function NotificationsBell() {
     return () => document.removeEventListener("mousedown", handleClick)
   }, [open])
 
+  // Marcar notificación como leída y navegar al ticket asociado
   const handleNotificationClick = (notif: Notification) => {
     setOpen(false)
 
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === notif.id ? { ...n, read: true } : n))
-    )
+    // Actualizar estado local de forma optimista
+    setNotifications((prev) => prev.map((n) => (n.id === notif.id ? { ...n, read: true } : n)))
     setUnreadCount((prev) => Math.max(0, prev - 1))
-    fetch(`/api/notifications/${notif.id}`, { method: "PATCH" }).catch(() => { })
+
+    // Persistir en BD en segundo plano
+    fetch(`/api/notifications/${notif.id}`, { method: "PATCH" }).catch(() => {})
 
     if (notif.ticket?.id) {
       router.push(`/dashboard/tickets/${notif.ticket.id}`)
     }
   }
 
+  // Marcar todas las notificaciones como leídas de forma optimista
   const handleMarkAllRead = () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
     setUnreadCount(0)
-    fetch("/api/notifications/mark-all-read", { method: "POST" }).catch(() => { })
+    fetch("/api/notifications/mark-all-read", { method: "POST" }).catch(() => {})
   }
 
+  // Badge: muestra "9+" si hay más de 9 no leídas
   const badgeText = unreadCount > 9 ? "9+" : String(unreadCount)
 
   return (
     <div ref={containerRef} style={{ position: "relative" }}>
+
+      {/* Botón campana con badge de no leídas */}
       <button
         onClick={() => setOpen((o) => !o)}
         aria-label="Notificaciones"
         style={{
-          position: "relative",
-          width: "36px",
-          height: "36px",
+          position: "relative", width: "36px", height: "36px",
           borderRadius: "var(--radius-md)",
           backgroundColor: "var(--color-bg)",
           border: "1px solid var(--color-border)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          color: "var(--color-text-muted)",
-          cursor: "pointer",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          color: "var(--color-text-muted)", cursor: "pointer",
           transition: "color 120ms",
         }}
         onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--color-text)")}
@@ -119,27 +124,19 @@ export function NotificationsBell() {
         {unreadCount > 0 && (
           <span
             style={{
-              position: "absolute",
-              top: "-4px",
-              right: "-4px",
-              minWidth: "18px",
-              height: "18px",
-              padding: "0 5px",
-              borderRadius: "9px",
-              backgroundColor: "var(--color-error)",
-              color: "white",
-              fontSize: "0.6875rem",
-              fontWeight: 700,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              lineHeight: 1,
+              position: "absolute", top: "-4px", right: "-4px",
+              minWidth: "18px", height: "18px", padding: "0 5px",
+              borderRadius: "9px", backgroundColor: "var(--color-error)",
+              color: "white", fontSize: "0.6875rem", fontWeight: 700,
+              display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1,
             }}
           >
             {badgeText}
           </span>
         )}
       </button>
+
+      {/* Dropdown de notificaciones */}
       {open && (
         <div
           style={{
@@ -153,18 +150,16 @@ export function NotificationsBell() {
             borderRadius: "var(--radius-lg)",
             boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
             zIndex: 50,
-            display: "flex",
-            flexDirection: "column",
+            display: "flex", flexDirection: "column",
             overflow: "hidden",
           }}
         >
+          {/* Cabecera del dropdown */}
           <div
             style={{
               padding: "12px 16px",
               borderBottom: "1px solid var(--color-border)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
+              display: "flex", alignItems: "center", justifyContent: "space-between",
             }}
           >
             <span style={{ fontSize: "0.9375rem", fontWeight: 600, color: "var(--color-text)" }}>
@@ -173,30 +168,17 @@ export function NotificationsBell() {
             {visibleNotifications.length > 0 && (
               <button
                 onClick={handleMarkAllRead}
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  fontSize: "0.8125rem",
-                  color: "var(--color-primary)",
-                  padding: 0,
-                }}
+                style={{ background: "none", border: "none", cursor: "pointer", fontSize: "0.8125rem", color: "var(--color-primary)", padding: 0 }}
               >
                 Marcar todas como leídas
               </button>
             )}
           </div>
 
+          {/* Lista de notificaciones no leídas */}
           <div style={{ overflowY: "auto", flex: 1 }}>
             {visibleNotifications.length === 0 ? (
-              <div
-                style={{
-                  padding: "32px 16px",
-                  textAlign: "center",
-                  color: "var(--color-text-muted)",
-                  fontSize: "0.875rem",
-                }}
-              >
+              <div style={{ padding: "32px 16px", textAlign: "center", color: "var(--color-text-muted)", fontSize: "0.875rem" }}>
                 No tienes notificaciones nuevas
               </div>
             ) : (
@@ -205,54 +187,24 @@ export function NotificationsBell() {
                   key={n.id}
                   onClick={() => handleNotificationClick(n)}
                   style={{
-                    width: "100%",
-                    textAlign: "left",
-                    padding: "12px 16px",
-                    border: "none",
+                    width: "100%", textAlign: "left",
+                    padding: "12px 16px", border: "none",
                     borderBottom: "1px solid var(--color-border)",
                     backgroundColor: "var(--color-primary-light)",
                     cursor: "pointer",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "4px",
+                    display: "flex", flexDirection: "column", gap: "4px",
                     transition: "background-color 120ms",
                   }}
                 >
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      gap: "8px",
-                      alignItems: "flex-start",
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontSize: "0.875rem",
-                        fontWeight: 600,
-                        color: "var(--color-text)",
-                      }}
-                    >
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: "8px", alignItems: "flex-start" }}>
+                    <span style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--color-text)" }}>
                       {n.title}
                     </span>
-                    <span
-                      style={{
-                        fontSize: "0.75rem",
-                        color: "var(--color-text-faint)",
-                        whiteSpace: "nowrap",
-                        flexShrink: 0,
-                      }}
-                    >
+                    <span style={{ fontSize: "0.75rem", color: "var(--color-text-faint)", whiteSpace: "nowrap", flexShrink: 0 }}>
                       {timeAgo(n.created_at)}
                     </span>
                   </div>
-                  <span
-                    style={{
-                      fontSize: "0.8125rem",
-                      color: "var(--color-text-muted)",
-                      lineHeight: 1.4,
-                    }}
-                  >
+                  <span style={{ fontSize: "0.8125rem", color: "var(--color-text-muted)", lineHeight: 1.4 }}>
                     {n.message}
                   </span>
                 </button>

@@ -6,15 +6,18 @@ import { useRouter } from "next/navigation"
 import { Paperclip, X, ArrowLeft } from "lucide-react"
 import { useSession } from "next-auth/react"
 
+// Opciones de prioridad disponibles
 const PRIORITIES = ["Baja", "Media", "Alta", "Crítica"]
 
+// Metadatos de cada prioridad: color indicador y descripción para el usuario
 const PRIORITY_META: Record<string, { color: string; desc: string }> = {
-  Baja: { color: "var(--color-success)", desc: "Sin urgencia, puede esperar" },
-  Media: { color: "#854d0e", desc: "Impacto moderado en el trabajo" },
-  Alta: { color: "var(--color-warning)", desc: "Requiere atención pronta" },
-  Crítica: { color: "var(--color-error)", desc: "Bloquea el trabajo completamente" },
+  Baja:    { color: "var(--color-success)", desc: "Sin urgencia, puede esperar" },
+  Media:   { color: "#854d0e",              desc: "Impacto moderado en el trabajo" },
+  Alta:    { color: "var(--color-warning)", desc: "Requiere atención pronta" },
+  Crítica: { color: "var(--color-error)",   desc: "Bloquea el trabajo completamente" },
 }
 
+// Estilo base compartido para inputs y selects del formulario
 const baseInputStyle: React.CSSProperties = {
   width: "100%",
   padding: "0.625rem 0.875rem",
@@ -31,24 +34,27 @@ export default function NewTicketPage() {
   const router = useRouter()
   const { data: session, status } = useSession()
 
+  // Estado del formulario
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
   const [category, setCategory] = useState<number | "">("")
   const [priority, setPriority] = useState("")
   const [file, setFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
+
+  // Estado de las categorías
   const [categories, setCategories] = useState<{ id: number; name: string }[]>([])
   const [categoriesLoading, setCategoriesLoading] = useState(true)
 
-  const isDirty =
-    title !== "" || description !== "" || category !== "" || priority !== "" || file !== null
+  // Detectar si el formulario tiene datos sin guardar
+  const isDirty = title !== "" || description !== "" || category !== "" || priority !== "" || file !== null
 
+  // Redirigir si no está autenticado
   useEffect(() => {
-    if (status === "unauthenticated") {
-      router.replace("/login")
-    }
+    if (status === "unauthenticated") router.replace("/login")
   }, [status, router])
 
+  // Advertir al usuario si intenta cerrar la pestaña con datos sin guardar
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (!isDirty) return
@@ -59,17 +65,13 @@ export default function NewTicketPage() {
     return () => window.removeEventListener("beforeunload", handleBeforeUnload)
   }, [isDirty])
 
+  // Cargar categorías activas para el selector del formulario
   useEffect(() => {
     const fetchCategories = async () => {
       try {
         const res = await fetch("/api/categories?active=true")
         const data = await res.json()
-
-        if (!res.ok) {
-          toast.error(data?.error ?? "Error cargando categorías")
-          return
-        }
-
+        if (!res.ok) { toast.error(data?.error ?? "Error cargando categorías"); return }
         setCategories(data)
       } catch {
         toast.error("Error cargando categorías")
@@ -78,29 +80,25 @@ export default function NewTicketPage() {
       }
     }
 
-    if (status === "authenticated") {
-      fetchCategories()
-    }
+    if (status === "authenticated") fetchCategories()
   }, [status])
 
+  // Cancelar: confirmar si hay datos, luego redirigir según rol
   const handleCancel = () => {
     if (isDirty) {
       const ok = confirm("Si sales ahora, perderás los datos del ticket. ¿Quieres continuar?")
       if (!ok) return
     }
-
     const role = (session?.user as { role?: string } | undefined)?.role
-
-    if (role === "admin" || role === "tech") {
-      router.push("/dashboard/tickets")
-    } else {
-      router.push("/dashboard/my-tickets")
-    }
+    router.push(role === "admin" || role === "tech" ? "/dashboard/tickets" : "/dashboard/my-tickets")
   }
 
+  // Enviar formulario: crear ticket y subir adjunto si existe
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (status !== "authenticated") return
+
+    // Validación de campos obligatorios
     if (!title) { toast.warning("Falta el título"); return }
     if (!description) { toast.warning("Falta la descripción"); return }
     if (category === "") { toast.warning("Selecciona una categoría"); return }
@@ -109,48 +107,35 @@ export default function NewTicketPage() {
     try {
       setLoading(true)
 
+      // Crear el ticket
       const res = await fetch("/api/tickets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title, description, category, priority }),
       })
-
       const data = await res.json()
-
-      if (!res.ok) {
-        toast.error(data?.error ?? "Error al crear el ticket")
-        return
-      }
+      if (!res.ok) { toast.error(data?.error ?? "Error al crear el ticket"); return }
 
       const newTicket = data
 
+      // Subir adjunto si el usuario seleccionó uno
       if (file) {
         const formData = new FormData()
         formData.append("file", file)
         formData.append("ticketId", String(newTicket.id))
 
-        const uploadRes = await fetch("/api/attachments", {
-          method: "POST",
-          body: formData,
-        })
-
+        const uploadRes = await fetch("/api/attachments", { method: "POST", body: formData })
         if (!uploadRes.ok) {
           const uploadData = await uploadRes.json().catch(() => null)
           toast.warning(uploadData?.error ?? "Ticket creado, pero hubo un error al subir el archivo")
         }
       }
 
-      toast.success("Ticket creado correctamente", {
-        description: "Tu solicitud ha sido registrada",
-      })
+      toast.success("Ticket creado correctamente", { description: "Tu solicitud ha sido registrada" })
 
+      // Redirigir según rol tras crear el ticket
       const role = (session?.user as { role?: string } | undefined)?.role
-
-      if (role === "admin" || role === "tech") {
-        router.push("/dashboard/tickets")
-      } else {
-        router.push("/dashboard/my-tickets")
-      }
+      router.push(role === "admin" || role === "tech" ? "/dashboard/tickets" : "/dashboard/my-tickets")
     } catch {
       toast.error("Error al crear el ticket")
     } finally {
@@ -158,23 +143,17 @@ export default function NewTicketPage() {
     }
   }
 
+  // Input dinámico: borde primario si tiene contenido
   const dynInput = (filled: boolean): React.CSSProperties => ({
     ...baseInputStyle,
     borderColor: filled ? "var(--color-primary)" : "var(--color-border)",
   })
 
+  // Skeleton de carga mientras se verifica la sesión
   if (status === "loading" || status === "unauthenticated") {
     return (
       <div style={{ width: "100%", padding: "2.5rem 4rem 3rem 3.5rem" }}>
-        <div
-          className="rounded-xl"
-          style={{
-            padding: "2.5rem 3rem",
-            backgroundColor: "var(--color-surface)",
-            border: "1px solid var(--color-border)",
-            boxShadow: "var(--shadow-sm)",
-          }}
-        >
+        <div className="rounded-xl" style={{ padding: "2.5rem 3rem", backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", boxShadow: "var(--shadow-sm)" }}>
           <div className="space-y-4">
             <div className="h-7 w-48 animate-pulse rounded-lg" style={{ backgroundColor: "var(--color-surface-offset)" }} />
             <div className="h-4 w-80 animate-pulse rounded-lg" style={{ backgroundColor: "var(--color-surface-offset)" }} />
@@ -187,34 +166,16 @@ export default function NewTicketPage() {
   }
 
   return (
-    <div
-      style={{
-        width: "100%",
-        padding: "2.5rem 4rem 3rem 3.5rem",
-      }}
-    >
+    <div style={{ width: "100%", padding: "2.5rem 4rem 3rem 3.5rem" }}>
+
+      {/* Botón volver */}
       <div className="flex items-center" style={{ marginBottom: "1.25rem" }}>
         <button
           onClick={handleCancel}
           className="flex items-center gap-1.5 text-sm font-medium transition"
-          style={{
-            color: "var(--color-text-muted)",
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            padding: "0.375rem 0.5rem",
-            borderRadius: "var(--radius-md)",
-          }}
-          onMouseEnter={(e) => {
-            const el = e.currentTarget as HTMLElement
-            el.style.backgroundColor = "var(--color-surface-offset)"
-            el.style.color = "var(--color-text)"
-          }}
-          onMouseLeave={(e) => {
-            const el = e.currentTarget as HTMLElement
-            el.style.backgroundColor = "transparent"
-            el.style.color = "var(--color-text-muted)"
-          }}
+          style={{ color: "var(--color-text-muted)", background: "none", border: "none", cursor: "pointer", padding: "0.375rem 0.5rem", borderRadius: "var(--radius-md)" }}
+          onMouseEnter={(e) => { const el = e.currentTarget as HTMLElement; el.style.backgroundColor = "var(--color-surface-offset)"; el.style.color = "var(--color-text)" }}
+          onMouseLeave={(e) => { const el = e.currentTarget as HTMLElement; el.style.backgroundColor = "transparent"; el.style.color = "var(--color-text-muted)" }}
         >
           <ArrowLeft size={15} />
           Volver
@@ -222,25 +183,15 @@ export default function NewTicketPage() {
       </div>
 
       <div style={{ marginBottom: "2rem" }}>
-        <h2 className="text-2xl font-bold" style={{ color: "var(--color-text)" }}>
-          Crear ticket
-        </h2>
-        <p className="mt-1 text-sm" style={{ color: "var(--color-text-muted)" }}>
-          Describe tu incidencia o solicitud con el mayor detalle posible
-        </p>
+        <h2 className="text-2xl font-bold" style={{ color: "var(--color-text)" }}>Crear ticket</h2>
+        <p className="mt-1 text-sm" style={{ color: "var(--color-text-muted)" }}>Describe tu incidencia o solicitud con el mayor detalle posible</p>
       </div>
 
       <form onSubmit={handleSubmit}>
-        <div
-          className="rounded-xl"
-          style={{
-            padding: "2.5rem 3rem",
-            backgroundColor: "var(--color-surface)",
-            border: "1px solid var(--color-border)",
-            boxShadow: "var(--shadow-sm)",
-          }}
-        >
+        <div className="rounded-xl" style={{ padding: "2.5rem 3rem", backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", boxShadow: "var(--shadow-sm)" }}>
           <div className="flex flex-col gap-6">
+
+            {/* Campo: título */}
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
                 <label className="text-base font-bold" style={{ color: "var(--color-text)" }}>
@@ -261,6 +212,7 @@ export default function NewTicketPage() {
               />
             </div>
 
+            {/* Campo: descripción */}
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
                 <label className="text-base font-bold" style={{ color: "var(--color-text)" }}>
@@ -289,6 +241,7 @@ export default function NewTicketPage() {
               />
             </div>
 
+            {/* Campos: categoría y prioridad */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="flex flex-col gap-2">
                 <label className="text-base font-medium" style={{ color: "var(--color-text)" }}>
@@ -325,6 +278,7 @@ export default function NewTicketPage() {
                     <option key={p} value={p}>{p}</option>
                   ))}
                 </select>
+                {/* Descripción de la prioridad seleccionada */}
                 {priority && PRIORITY_META[priority] && (
                   <p className="mt-0.5 text-xs" style={{ color: PRIORITY_META[priority].color }}>
                     {PRIORITY_META[priority].desc}
@@ -333,40 +287,28 @@ export default function NewTicketPage() {
               </div>
             </div>
 
+            {/* Campo: archivo adjunto (opcional, máx 10 MB) */}
             <div className="flex flex-col gap-2">
               <label className="text-base font-medium" style={{ color: "var(--color-text)" }}>
                 Archivo adjunto
               </label>
               {file ? (
+                // Previsualización del archivo seleccionado
                 <div
                   className="flex items-center gap-3 rounded-lg px-3 py-2.5"
-                  style={{
-                    backgroundColor: "var(--color-primary-light)",
-                    border: "1px solid color-mix(in oklab, var(--color-primary) 30%, transparent)",
-                  }}
+                  style={{ backgroundColor: "var(--color-primary-light)", border: "1px solid color-mix(in oklab, var(--color-primary) 30%, transparent)" }}
                 >
                   <Paperclip size={14} color="var(--color-primary)" />
-                  <span className="flex-1 truncate text-sm" style={{ color: "var(--color-primary-dark)" }}>
-                    {file.name}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setFile(null)}
-                    className="flex h-6 w-6 items-center justify-center rounded-md"
-                    style={{ color: "var(--color-primary)", background: "none", border: "none", cursor: "pointer" }}
-                  >
+                  <span className="flex-1 truncate text-sm" style={{ color: "var(--color-primary-dark)" }}>{file.name}</span>
+                  <button type="button" onClick={() => setFile(null)} className="flex h-6 w-6 items-center justify-center rounded-md" style={{ color: "var(--color-primary)", background: "none", border: "none", cursor: "pointer" }}>
                     <X size={13} />
                   </button>
                 </div>
               ) : (
+                // Zona de selección de archivo
                 <label
                   className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2.5 text-sm transition"
-                  style={{
-                    border: "1px dashed var(--color-border)",
-                    color: "var(--color-text-muted)",
-                    backgroundColor: "var(--color-bg)",
-                    fontSize: "0.9375rem",
-                  }}
+                  style={{ border: "1px dashed var(--color-border)", color: "var(--color-text-muted)", backgroundColor: "var(--color-bg)", fontSize: "0.9375rem" }}
                   onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.borderColor = "var(--color-primary)")}
                   onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.borderColor = "var(--color-border)")}
                 >
@@ -378,13 +320,12 @@ export default function NewTicketPage() {
                     onChange={(e) => {
                       const selected = e.target.files?.[0]
                       if (!selected) return
-
+                      // Validar tamaño máximo en cliente antes de subir
                       if (selected.size > 10 * 1024 * 1024) {
                         toast.error("El archivo no puede superar los 10 MB")
                         e.target.value = ""
                         return
                       }
-
                       setFile(selected)
                     }}
                   />
@@ -394,6 +335,7 @@ export default function NewTicketPage() {
 
             <div style={{ height: "1px", backgroundColor: "var(--color-divider)" }} />
 
+            {/* Botones de acción del formulario */}
             <div className="flex items-center justify-end gap-3">
               <button
                 type="button"
@@ -405,26 +347,13 @@ export default function NewTicketPage() {
               >
                 Cancelar
               </button>
-
               <button
                 type="submit"
                 disabled={loading || categoriesLoading}
                 className="flex items-center gap-2 rounded-full font-medium transition disabled:opacity-50 whitespace-nowrap"
-                style={{
-                  backgroundColor: "var(--color-primary)",
-                  color: "#fff",
-                  fontSize: "0.9375rem",
-                  fontWeight: 700,
-                  padding: "0.55rem 1.5rem",
-                  border: "none",
-                  cursor: loading || categoriesLoading ? "not-allowed" : "pointer",
-                }}
-                onMouseEnter={(e) =>
-                  !(loading || categoriesLoading) && ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-primary-hover)")
-                }
-                onMouseLeave={(e) =>
-                  !(loading || categoriesLoading) && ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-primary)")
-                }
+                style={{ backgroundColor: "var(--color-primary)", color: "#fff", fontSize: "0.9375rem", fontWeight: 700, padding: "0.55rem 1.5rem", border: "none", cursor: loading || categoriesLoading ? "not-allowed" : "pointer" }}
+                onMouseEnter={(e) => !(loading || categoriesLoading) && ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-primary-hover)")}
+                onMouseLeave={(e) => !(loading || categoriesLoading) && ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--color-primary)")}
               >
                 {loading ? (
                   <>
@@ -433,11 +362,10 @@ export default function NewTicketPage() {
                     </svg>
                     Creando...
                   </>
-                ) : (
-                  "Crear ticket"
-                )}
+                ) : "Crear ticket"}
               </button>
             </div>
+
           </div>
         </div>
       </form>
